@@ -14,6 +14,13 @@ enum i2c_device_names {
         test_i2c_driver,
 };
 
+/* Client data from DT */
+struct platform_device_data
+{
+        unsigned size;
+        const char *name;;
+};
+
 /* Device private data structure */
 struct device_private_data {
         struct platform_device_data     pdata;
@@ -24,8 +31,7 @@ struct device_private_data {
 };
 
 /* Driver private data structure */
-struct driver_private_data
-{
+struct driver_private_data {
         int             total_devices;
         dev_t           device_number_base;
         struct class    *class_chardriver;
@@ -33,13 +39,6 @@ struct driver_private_data
 };
 
 struct driver_private_data driver_data;
-
-/* Client data from DT */
-struct platform_device_data
-{
-        unsigned size;
-};
-
 
 static const struct i2c_device_id test_i2c_id[] = {
         { "test_i2c_driver", test_i2c_driver },
@@ -49,7 +48,7 @@ MODULE_DEVICE_TABLE(i2c, test_i2c_id);
 
 static const struct of_device_id test_i2c_of_match[] = { 
         {
-                .compatible = "org,test_i2c_driver",
+                .compatible = "test,test_i2c_driver",
                 .data = (void *)test_i2c_driver
         },
         { },
@@ -59,7 +58,7 @@ static struct i2c_driver test_i2c_driver = {
         .driver = {
                 .name               = "test_i2c_driver",
                 .owner              = THIS_MODULE,
-                .of_match_table     = test_i2c_of_match,
+                .of_match_table     = of_match_ptr(test_i2c_of_match),
         },
 
         .probe          = test_i2c_probe,
@@ -67,17 +66,52 @@ static struct i2c_driver test_i2c_driver = {
         .id_table       = test_i2c_id,
 };
 
+/* Check device tree and get data*/
+struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
+{
+        struct device *dev = &client->dev;
+        struct device_node *dev_node = dev->of_node;
+        struct platform_device_data *pdata;
+
+        if(!dev_node)
+                return NULL;
+        
+        /* Allocate memory for pdata */
+        pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+        if(!pdata){
+                dev_info(dev, "Cannot allocate memory \n");
+                return ERR_PTR(-ENOMEM);
+        }
+
+
+        /* Extract propertes of the device node using dev_node 
+         * and put into struct platform_device_data */
+
+        if(of_property_read_string(dev_node, "test,name",
+                    &pdata->name)){
+                dev_info(dev, "Missing serial number property \n");
+                return ERR_PTR(-EINVAL);
+        }
+
+        if(of_property_read_u32(dev_node, "test,size", &pdata->size)){
+                dev_info(dev, "Missing size property \n");
+                return ERR_PTR(-EINVAL);
+        }
+
+        return pdata;
+}
+
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-        int ret;
         struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
+        int err;
         
         dev_info(dev, "I2C device is detected\n");
 
         /* Check device tree and get data*/
-        pdata = char_driver_get_platform_dt(dev);
+        pdata = get_platform_data_dt(client);
         if(IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
@@ -85,7 +119,7 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_data = dev_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
         if(!dev_data){
                 dev_info(dev, "Cannot allocate memory for device private data\n");
-                ret = -ENOMEM;
+                err = -ENOMEM;
         }
 
         /* Save i2c client */
@@ -96,9 +130,26 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
 
         /* Save data from DT */
         dev_data->pdata.size = pdata->size;
+        dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
+        dev_info(dev, "Device name = %d\n", dev_data->pdata.name);
 
+        /* Do cdev init and cdev add */
+        cdev_init(&dev_data->cdev, &platform_driver_fops); 
+        err = cdev_add(&dev_data->cdev, dev_data->dev_num, 1);
+        if(err < 0)
+                pr_err("Cdev add was fail\n");
 
+        driver_data.device_chardriver = device_create(
+                driver_data.class_chardriver, NULL, dev_data->dev_num, NULL,
+                "chardriver-%d", driver_data.total_devices
+        );
+        if(IS_ERR(driver_data.device_chardriver))
+                dev_info(dev, "Device create faild \n");
+
+        driver_data.total_devices++;
+
+        dev_info(dev, "Probe function was successful\n");
 
         return 0;
 }
