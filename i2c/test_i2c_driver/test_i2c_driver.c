@@ -46,14 +46,6 @@ static const struct i2c_device_id test_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, test_i2c_id);
 
-static const struct of_device_id test_i2c_of_match[] = { 
-        {
-                .compatible = "test,test_i2c_driver",
-                .data = (void *)test_i2c_driver
-        },
-        { },
-};
-
 static struct i2c_driver test_i2c_driver = {
         .driver = {
                 .name               = "test_i2c_driver",
@@ -64,6 +56,18 @@ static struct i2c_driver test_i2c_driver = {
         .probe          = test_i2c_probe,
         .remove         = test_i2c_remove,
         .id_table       = test_i2c_id,
+};
+
+int my_open(struct inode *inode, struct file *filp);
+ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
+ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
+int my_release(struct inode *inode, struct file *filp);
+    
+struct file_operations fops = {
+        .open           = my_open,
+        .write          = my_write,
+        .read           = my_read,
+        .release        = my_release,
 };
 
 /* Check device tree and get data*/
@@ -87,8 +91,7 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
         /* Extract propertes of the device node using dev_node 
          * and put into struct platform_device_data */
 
-        if(of_property_read_string(dev_node, "test,name",
-                    &pdata->name)){
+        if(of_property_read_string(dev_node, "test,name", &pdata->name)){
                 dev_info(dev, "Missing serial number property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -159,12 +162,40 @@ static int test_i2c_remove(struct i2c_client *client)
         return 0;
 }
 
+
+/* File operation functions */ 
+
+int my_open(struct inode *inode, struct file *filp)
+{
+        pr_info("Open was successful\n");
+        return 0;
+}
+
+ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
+{
+        return -ENOMEM;
+}
+
+ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
+{
+        return 0;
+}
+
+int my_release(struct inode *inode, struct file *filp)
+{
+        pr_info("Close was successful\n");
+        return 0;
+}
+
+
 static int __init test_i2c_init(void)
 {
         int ret;
 
         /* Dynamically allocate a device number for all devices  */
-        ret = alloc_chrdev_region(&driver_data.device_number_base, 0, MAX_DEVICES, "i2c devices"); 
+        ret = alloc_chrdev_region(
+                &driver_data.device_number_base, 0, MAX_DEVICES, "i2c devices"
+        ); 
         if(ret < 0){
                 pr_err("Alloc chrdev faild\n");
                 return ret;
