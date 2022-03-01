@@ -1,22 +1,29 @@
+#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/init.h> 
-#include <linux/i2c.h> 
+#include <linux/delay.h>
+#include <linux/sysfs.h>
+#include <linux/mod_devicetable.h>
+#include <linux/log2.h>
+#include <linux/i2c.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <asm/uaccess.h>
 #include <linux/fs.h>
-#include <linux/err.h> 
-#include <linux/of.h>
-#include <linux/fs.h>
-#include <linux/of_device.h>
+#include <linux/uaccess.h>
 
 #define MAX_DEVICES 3
 
-enum i2c_device_names {
-        test_i2c_driver,
-};
+static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
+static int test_i2c_remove(struct i2c_client *client);
+int my_open(struct inode *inode, struct file *filp);
+ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
+ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
+int my_release(struct inode *inode, struct file *filp);
 
 /* Client data from DT */
-struct platform_device_data
-{
+struct platform_device_data {
         unsigned size;
         const char *name;;
 };
@@ -30,6 +37,10 @@ struct device_private_data {
         struct cdev                     cdev;
 };
 
+enum i2c_device_names {
+        test_i2c_driver_first,
+};
+
 /* Driver private data structure */
 struct driver_private_data {
         int             total_devices;
@@ -40,9 +51,17 @@ struct driver_private_data {
 
 struct driver_private_data driver_data;
 
+struct of_device_id test_i2c_of_match[] = {
+        {
+                .compatible = "test_i2c_driver",
+                .data = (void*)test_i2c_driver_first
+        },
+        { }
+};
+
 static const struct i2c_device_id test_i2c_id[] = {
-        { "test_i2c_driver", test_i2c_driver },
-        { },
+        { "first_i2c_driver", test_i2c_driver_first },
+        { }
 };
 MODULE_DEVICE_TABLE(i2c, test_i2c_id);
 
@@ -58,12 +77,8 @@ static struct i2c_driver test_i2c_driver = {
         .id_table       = test_i2c_id,
 };
 
-int my_open(struct inode *inode, struct file *filp);
-ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
-ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
-int my_release(struct inode *inode, struct file *filp);
     
-struct file_operations fops = {
+struct file_operations i2c_driver_fops = {
         .open           = my_open,
         .write          = my_write,
         .read           = my_read,
@@ -119,7 +134,7 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device private data */
-        dev_data = dev_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
+        dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
         if(!dev_data){
                 dev_info(dev, "Cannot allocate memory for device private data\n");
                 err = -ENOMEM;
@@ -135,10 +150,10 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_data->pdata.size = pdata->size;
         dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
-        dev_info(dev, "Device name = %d\n", dev_data->pdata.name);
+        dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
 
         /* Do cdev init and cdev add */
-        cdev_init(&dev_data->cdev, &platform_driver_fops); 
+        cdev_init(&dev_data->cdev, &i2c_driver_fops); 
         err = cdev_add(&dev_data->cdev, dev_data->dev_num, 1);
         if(err < 0)
                 pr_err("Cdev add was fail\n");
@@ -221,7 +236,7 @@ static int __init test_i2c_init(void)
 
         pr_info("Platform I2C driver loaded\n");
 
-        return 0
+        return 0;
 }
 
 static void __exit test_i2c_cleanup(void)

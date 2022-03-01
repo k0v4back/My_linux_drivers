@@ -21,22 +21,20 @@
                 };
         };
 
+
         fragment@1 {
                 target = <&i2c1>;
 
                 __overlay__ {
-                        #address-cells = <0x1>;
-                        #size-cells = <0x0>;
-                        pinctrl-names ="default";
                         pinctrl-0 = <&i2c1_pins>;
 
                         status = "okay";
                         clock-frequency = <100000>;
 
                         test_i2c_driver: test_i2c_driver@68 {
+                                compatible = "test_i2c_driver";
                                 #address-cells = <1>;
                                 #size-cells = <0>;
-                                compatible = "test_i2c_driver";
                                 reg = <0x68>;
                         };
                 };
