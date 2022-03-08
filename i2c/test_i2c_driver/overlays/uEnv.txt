@@ -1,5 +1,5 @@
 console=ttyS0,115200n8
-overlays=i2c1.dtbo
+overlays=i2c1-00A1.dtbo
 dtb=am335x-boneblack.dtb
 dtbopath=/lib/firmware
 ovenvsetup=setenv fdtaddr 0x87f00000;setenv fdtovaddr 0x87fc0000;

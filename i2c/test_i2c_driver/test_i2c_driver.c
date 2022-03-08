@@ -14,13 +14,16 @@
 #include <linux/uaccess.h>
 
 #define MAX_DEVICES 3
+#define DEV_MEM_SIZE 512
+
+char device_buffer[DEV_MEM_SIZE];
 
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int test_i2c_remove(struct i2c_client *client);
-int my_open(struct inode *inode, struct file *filp);
-ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
-ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
-int my_release(struct inode *inode, struct file *filp);
+static int my_open(struct inode *inode, struct file *filp);
+static ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
+static ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
+static int my_release(struct inode *inode, struct file *filp);
 
 /* Client data from DT */
 struct platform_device_data {
@@ -174,29 +177,72 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
 
 static int test_i2c_remove(struct i2c_client *client)
 {
+        struct driver_private_data *drv_data;
+        struct device_private_data *dev_data;
+        struct device *dev = &client->dev;
+
+        dev_info(dev, "Remove Function is invoked...\n"); 
+
+        dev_data = i2c_get_clientdata(client);
+        cdev_del(&dev_data->cdev);
+        device_destroy(drv_data->class_chardriver, dev_data->dev_num);
+        class_destroy(drv_data->class_chardriver);
+        unregister_chrdev_region(dev_data->dev_num, MAX_DEVICES);
+
         return 0;
 }
 
 
 /* File operation functions */ 
 
-int my_open(struct inode *inode, struct file *filp)
+static int my_open(struct inode *inode, struct file *filp)
 {
+        struct device_private_data *dev_data = container_of(
+                inode->i_cdev, struct device_private_data, cdev
+            );
+        if(!dev_data) {
+                printk(KERN_ALERT" There is no data...\n");
+                return -1;
+        }
+        filp->private_data = dev_data;
         pr_info("Open was successful\n");
+
         return 0;
 }
 
-ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
+static ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
+        printk(KERN_INFO "Write requested for %zu bytes\n ", count);
+        printk(KERN_INFO "Current file position: = %lld\n", *f_pos);
+
+        /* Check the 'count' variable */
+        if((*f_pos + count) > DEV_MEM_SIZE)
+        count = DEV_MEM_SIZE - *f_pos;
+
+        /* If buff is empty */
+        if(!count)
         return -ENOMEM;
+
+        /* Copy from user */
+        if(copy_from_user(&device_buffer[*f_pos], buff, count))
+        return -EFAULT;
+
+        /* Update the current file position */
+        *f_pos += count;
+
+        printk(KERN_INFO "Number of bytes successfully written = %zu \n", count);
+        printk(KERN_INFO "Update file position = %lld \n", *f_pos);
+
+        /* Num of bytes which have been successfully written*/
+        return count;
 }
 
-ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
+static ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
         return 0;
 }
 
-int my_release(struct inode *inode, struct file *filp)
+static int my_release(struct inode *inode, struct file *filp)
 {
         pr_info("Close was successful\n");
         return 0;
@@ -243,6 +289,7 @@ static void __exit test_i2c_cleanup(void)
 {
         unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
         i2c_del_driver(&test_i2c_driver);
+        pr_info("Module unloaded\n");
 }
 
 module_init(test_i2c_init);
