@@ -33,6 +33,8 @@
 
                         test_i2c_driver: test_i2c_driver@68 {
                                 compatible = "test_i2c_driver";
+                                test,size = <2048>;
+                                test,name = "Hello from k0v4";
                                 #address-cells = <1>;
                                 #size-cells = <0>;
                                 reg = <0x68>;
