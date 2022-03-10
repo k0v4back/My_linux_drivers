@@ -14,9 +14,6 @@
 #include <linux/uaccess.h>
 
 #define MAX_DEVICES 3
-#define DEV_MEM_SIZE 512
-
-char device_buffer[DEV_MEM_SIZE];
 
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int test_i2c_remove(struct i2c_client *client);
@@ -28,7 +25,7 @@ static int my_release(struct inode *inode, struct file *filp);
 /* Client data from DT */
 struct platform_device_data {
         unsigned size;
-        const char *name;;
+        const char *name;
 };
 
 /* Device private data structure */
@@ -212,26 +209,27 @@ static int my_open(struct inode *inode, struct file *filp)
 
 static ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
-        printk(KERN_INFO "Write requested for %zu bytes\n ", count);
-        printk(KERN_INFO "Current file position: = %lld\n", *f_pos);
+        struct device_private_data *dev = (struct device_private_data*)(filp->private_data);
+        struct i2c_adapter *adap = dev->client->adapter;
+        struct i2c_msg msg;
+        char *temp = memdup_user(buff, count);
 
-        /* Check the 'count' variable */
-        if((*f_pos + count) > DEV_MEM_SIZE)
-        count = DEV_MEM_SIZE - *f_pos;
+        printk(KERN_INFO "Write requested for %zu bytes\n ", count);
 
         /* If buff is empty */
         if(!count)
-        return -ENOMEM;
+            return -ENOMEM;
 
         /* Copy from user */
-        if(copy_from_user(&device_buffer[*f_pos], buff, count))
-        return -EFAULT;
+        msg.addr = 0x68;
+        msg.flags = 0;
+        msg.len = count;
+        msg.buf = temp;
 
-        /* Update the current file position */
-        *f_pos += count;
+        i2c_transfer(adap, &msg, 1);
+        kfree(temp);
 
         printk(KERN_INFO "Number of bytes successfully written = %zu \n", count);
-        printk(KERN_INFO "Update file position = %lld \n", *f_pos);
 
         /* Num of bytes which have been successfully written*/
         return count;
@@ -239,7 +237,29 @@ static ssize_t my_write(struct file *filp, const char __user *buff, size_t count
 
 static ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
-        return 0;
+        struct device_private_data *dev = (struct device_private_data*)(filp->private_data);
+        struct i2c_adapter *adap = dev->client->adapter;
+        struct i2c_msg msg;
+        char *temp = kmalloc(buff, count);
+
+        printk(KERN_INFO "Read requested for %zu bytes\n ", count);
+
+        /* Copy to user */
+        msg.addr = 0x68;
+        msg.flags = 0;
+        msg.flags |= I2C_M_RD;
+        msg.len = count;
+        msg.buf = temp;
+
+        if(i2c_transfer(adap, &msg, 1)){
+                return -EFAULT;
+        }
+        kfree(temp);
+
+        printk(KERN_INFO "Number of bytes successfully reading = %zu \n", count);
+
+        /* Num of bytes which have been successfully written*/
+        return count;
 }
 
 static int my_release(struct inode *inode, struct file *filp)
