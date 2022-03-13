@@ -1,0 +1,8 @@
+&i2c2 {
+    test_i2c_driver: test_i2c_driver@38 {
+        compatible = "test_i2c_driver"; 
+        test,size = <1024>;
+        test,name = "Hello from k0v4";
+        reg = <0x38>;
+    };
+};

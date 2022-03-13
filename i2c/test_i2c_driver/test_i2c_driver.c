@@ -25,6 +25,7 @@ static int my_release(struct inode *inode, struct file *filp);
 /* Client data from DT */
 struct platform_device_data {
         unsigned size;
+        unsigned reg;
         const char *name;
 };
 
@@ -102,7 +103,6 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
                 return ERR_PTR(-ENOMEM);
         }
 
-
         /* Extract propertes of the device node using dev_node 
          * and put into struct platform_device_data */
 
@@ -112,6 +112,11 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
         }
 
         if(of_property_read_u32(dev_node, "test,size", &pdata->size)){
+                dev_info(dev, "Missing size property \n");
+                return ERR_PTR(-EINVAL);
+        }
+        
+        if(of_property_read_u32(dev_node, "reg", &pdata->reg)){
                 dev_info(dev, "Missing size property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -151,6 +156,7 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
+        dev_info(dev, "Device reg = %s\n", dev_data->pdata.reg);
 
         /* Do cdev init and cdev add */
         cdev_init(&dev_data->cdev, &i2c_driver_fops); 
