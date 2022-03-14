@@ -5,7 +5,6 @@
 #include <linux/delay.h>
 #include <linux/sysfs.h>
 #include <linux/mod_devicetable.h>
-#include <linux/log2.h>
 #include <linux/i2c.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
@@ -13,14 +12,8 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 
-#define MAX_DEVICES 3
-
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int test_i2c_remove(struct i2c_client *client);
-static int my_open(struct inode *inode, struct file *filp);
-static ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
-static ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
-static int my_release(struct inode *inode, struct file *filp);
 
 /* Client data from DT */
 struct platform_device_data {
@@ -44,7 +37,6 @@ enum i2c_device_names {
 
 /* Driver private data structure */
 struct driver_private_data {
-        int             total_devices;
         dev_t           device_number_base;
         struct class    *class_chardriver;
         struct device   *device_chardriver;
@@ -61,7 +53,7 @@ struct of_device_id test_i2c_of_match[] = {
 };
 
 static const struct i2c_device_id test_i2c_id[] = {
-        { "first_i2c_driver", test_i2c_driver_first },
+        { "test_i2c_driver", test_i2c_driver_first },
         { }
 };
 MODULE_DEVICE_TABLE(i2c, test_i2c_id);
@@ -76,14 +68,6 @@ static struct i2c_driver test_i2c_driver = {
         .probe          = test_i2c_probe,
         .remove         = test_i2c_remove,
         .id_table       = test_i2c_id,
-};
-
-    
-struct file_operations i2c_driver_fops = {
-        .open           = my_open,
-        .write          = my_write,
-        .read           = my_read,
-        .release        = my_release,
 };
 
 /* Check device tree and get data*/
@@ -116,11 +100,6 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
                 return ERR_PTR(-EINVAL);
         }
         
-        if(of_property_read_u32(dev_node, "reg", &pdata->reg)){
-                dev_info(dev, "Missing size property \n");
-                return ERR_PTR(-EINVAL);
-        }
-
         return pdata;
 }
 
@@ -156,22 +135,6 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
-        dev_info(dev, "Device reg = %s\n", dev_data->pdata.reg);
-
-        /* Do cdev init and cdev add */
-        cdev_init(&dev_data->cdev, &i2c_driver_fops); 
-        err = cdev_add(&dev_data->cdev, dev_data->dev_num, 1);
-        if(err < 0)
-                pr_err("Cdev add was fail\n");
-
-        driver_data.device_chardriver = device_create(
-                driver_data.class_chardriver, NULL, dev_data->dev_num, NULL,
-                "chardriver-%d", driver_data.total_devices
-        );
-        if(IS_ERR(driver_data.device_chardriver))
-                dev_info(dev, "Device create faild \n");
-
-        driver_data.total_devices++;
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -180,17 +143,9 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
 
 static int test_i2c_remove(struct i2c_client *client)
 {
-        struct driver_private_data *drv_data;
-        struct device_private_data *dev_data;
         struct device *dev = &client->dev;
 
         dev_info(dev, "Remove Function is invoked...\n"); 
-
-        dev_data = i2c_get_clientdata(client);
-        cdev_del(&dev_data->cdev);
-        device_destroy(drv_data->class_chardriver, dev_data->dev_num);
-        class_destroy(drv_data->class_chardriver);
-        unregister_chrdev_region(dev_data->dev_num, MAX_DEVICES);
 
         return 0;
 }
@@ -198,105 +153,9 @@ static int test_i2c_remove(struct i2c_client *client)
 
 /* File operation functions */ 
 
-static int my_open(struct inode *inode, struct file *filp)
-{
-        struct device_private_data *dev_data = container_of(
-                inode->i_cdev, struct device_private_data, cdev
-            );
-        if(!dev_data) {
-                printk(KERN_ALERT" There is no data...\n");
-                return -1;
-        }
-        filp->private_data = dev_data;
-        pr_info("Open was successful\n");
-
-        return 0;
-}
-
-static ssize_t my_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
-{
-        struct device_private_data *dev = (struct device_private_data*)(filp->private_data);
-        struct i2c_adapter *adap = dev->client->adapter;
-        struct i2c_msg msg;
-        char *temp = memdup_user(buff, count);
-
-        printk(KERN_INFO "Write requested for %zu bytes\n ", count);
-
-        /* If buff is empty */
-        if(!count)
-            return -ENOMEM;
-
-        /* Copy from user */
-        msg.addr = 0x68;
-        msg.flags = 0;
-        msg.len = count;
-        msg.buf = temp;
-
-        i2c_transfer(adap, &msg, 1);
-        kfree(temp);
-
-        printk(KERN_INFO "Number of bytes successfully written = %zu \n", count);
-
-        /* Num of bytes which have been successfully written*/
-        return count;
-}
-
-static ssize_t my_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
-{
-        struct device_private_data *dev = (struct device_private_data*)(filp->private_data);
-        struct i2c_adapter *adap = dev->client->adapter;
-        struct i2c_msg msg;
-        char *temp = kmalloc(buff, count);
-
-        printk(KERN_INFO "Read requested for %zu bytes\n ", count);
-
-        /* Copy to user */
-        msg.addr = 0x68;
-        msg.flags = 0;
-        msg.flags |= I2C_M_RD;
-        msg.len = count;
-        msg.buf = temp;
-
-        if(i2c_transfer(adap, &msg, 1)){
-                return -EFAULT;
-        }
-        kfree(temp);
-
-        printk(KERN_INFO "Number of bytes successfully reading = %zu \n", count);
-
-        /* Num of bytes which have been successfully written*/
-        return count;
-}
-
-static int my_release(struct inode *inode, struct file *filp)
-{
-        pr_info("Close was successful\n");
-        return 0;
-}
-
-
 static int __init test_i2c_init(void)
 {
         int ret;
-
-        /* Dynamically allocate a device number for all devices  */
-        ret = alloc_chrdev_region(
-                &driver_data.device_number_base, 0, MAX_DEVICES, "i2c devices"
-        ); 
-        if(ret < 0){
-                pr_err("Alloc chrdev faild\n");
-                return ret;
-        }
-
-        /* Create device class under /sys/class  */
-        driver_data.class_chardriver = class_create(THIS_MODULE, "driver_data_class");
-        if(IS_ERR(driver_data.class_chardriver)){
-                pr_err("Class creation failed\n");
-                ret = PTR_ERR(driver_data.class_chardriver);
-                unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
-                i2c_del_driver(&test_i2c_driver);
-                return ret; 
-        }
         
         ret = i2c_add_driver(&test_i2c_driver);
         if(ret != 0){
@@ -313,7 +172,6 @@ static int __init test_i2c_init(void)
 
 static void __exit test_i2c_cleanup(void)
 {
-        unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
         i2c_del_driver(&test_i2c_driver);
         pr_info("Module unloaded\n");
 }
