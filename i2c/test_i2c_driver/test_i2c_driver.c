@@ -14,6 +14,8 @@
 
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int test_i2c_remove(struct i2c_client *client);
+static int i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
+static int i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
 
 /* Client data from DT */
 struct platform_device_data {
@@ -136,6 +138,9 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
 
+        unsigned char buf[5] = "k0v4";
+        i2c_write(buf, 5, client);
+
         dev_info(dev, "Probe function was successful\n");
 
         return 0;
@@ -153,6 +158,21 @@ static int test_i2c_remove(struct i2c_client *client)
 
 /* File operation functions */ 
 
+static int i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client)
+{
+    int ret = i2c_master_send(client, buf, len);
+
+    return ret;
+}
+
+static int i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client)
+{
+    int ret = i2c_master_recv(client, buf, len);
+
+    return ret;
+}
+
+
 static int __init test_i2c_init(void)
 {
         int ret;
@@ -160,7 +180,6 @@ static int __init test_i2c_init(void)
         ret = i2c_add_driver(&test_i2c_driver);
         if(ret != 0){
                 pr_err("%s:driver registration failed i2c-slave, error=%d\n", __func__, ret);
-                unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
                 i2c_del_driver(&test_i2c_driver);
                 return ret;
         }
