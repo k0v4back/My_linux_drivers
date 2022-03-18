@@ -14,18 +14,18 @@
 
 static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int test_i2c_remove(struct i2c_client *client);
-static int i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
-static int i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
+static int test_i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
+static int test_i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
 
 /* Client data from DT */
-struct platform_device_data {
+static struct platform_device_data {
         unsigned size;
         unsigned reg;
         const char *name;
 };
 
 /* Device private data structure */
-struct device_private_data {
+static struct device_private_data {
         struct platform_device_data     pdata;
         struct i2c_client               *client;
         dev_t                           dev_num;
@@ -33,20 +33,11 @@ struct device_private_data {
         struct cdev                     cdev;
 };
 
-enum i2c_device_names {
+static enum i2c_device_names {
         test_i2c_driver_first,
 };
 
-/* Driver private data structure */
-struct driver_private_data {
-        dev_t           device_number_base;
-        struct class    *class_chardriver;
-        struct device   *device_chardriver;
-};
-
-struct driver_private_data driver_data;
-
-struct of_device_id test_i2c_of_match[] = {
+static struct of_device_id test_i2c_of_match[] = {
         {
                 .compatible = "test_i2c_driver",
                 .data = (void*)test_i2c_driver_first
@@ -139,7 +130,7 @@ static int test_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
 
         unsigned char buf[5] = "k0v4";
-        i2c_write(buf, 5, client);
+        test_i2c_write(buf, 5, client);
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -158,14 +149,14 @@ static int test_i2c_remove(struct i2c_client *client)
 
 /* File operation functions */ 
 
-static int i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client)
+static int test_i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client)
 {
     int ret = i2c_master_send(client, buf, len);
 
     return ret;
 }
 
-static int i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client)
+static int test_i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client)
 {
     int ret = i2c_master_recv(client, buf, len);
 
