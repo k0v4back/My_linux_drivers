@@ -1,13 +1,27 @@
 #include <linux/kernel.h>
-#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/sysfs.h>
 #include <linux/i2c.h>
+#include<linux/module.h>
+#include<linux/fs.h>
+#include<linux/cdev.h>
+#include<linux/device.h>
+#include<linux/kdev_t.h>
+#include<linux/uaccess.h>
+#include <linux/platform_device.h>
+#include<linux/slab.h>
+#include<linux/mod_devicetable.h>
+#include<linux/of.h>
+#include<linux/of_device.h>
 
 static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int sysfs_i2c_remove(struct i2c_client *client);
 static int sysfs_i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static int sysfs_i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
+static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t store_size(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
+static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 
 /* Client data from DT */
 static struct platform_device_data {
@@ -18,8 +32,11 @@ static struct platform_device_data {
 
 /* Device private data structure */
 static struct device_private_data {
-        struct platform_device_data     pdata;
-        struct i2c_client               *client;
+        struct platform_device_data pdata;
+        struct i2c_client *client;
+        char *buffer;
+        dev_t dev_num;
+        struct cdev cdev;
 };
 
 static enum i2c_device_names {
@@ -52,7 +69,47 @@ static struct i2c_driver sysfs_i2c_driver = {
         .id_table       = sysfs_i2c_id,
 };
 
-/* Check device tree and get data*/
+/*
+ *  2 variables of struct device_attribute
+ */
+static DEVICE_ATTR(size, S_IRUGO|S_IWUSR, show_size, store_size);
+static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
+
+/*
+ * Device attribute functions
+ */
+static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    pr_info("It is show_size\n");
+    return 0;
+}
+
+static ssize_t store_size(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    pr_info("It is store_size\n");
+    return 0;
+}
+
+static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    pr_info("It is show_name\n");
+    return 0;
+}
+
+static int platform_driver_sysfs_create_files(struct device *dev)
+{
+        int ret;
+        
+        ret = sysfs_create_file(&dev->kobj, &dev_attr_size.attr);
+        ret = sysfs_create_file(&dev->kobj, &dev_attr_name.attr);
+
+        return ret;
+}
+
+
+/*
+ * Check device tree and get data
+ */
 struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
 {
         struct device *dev = &client->dev;
@@ -90,7 +147,7 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
         struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
-        int err;
+        int ret;
         
         dev_info(dev, "I2C device is detected\n");
 
@@ -99,11 +156,11 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
         if(IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
-        /* Allocate memory for device private data */
-        dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
+        /* Allocate memory for device */
+        dev_data = devm_kzalloc(dev, sizeof(struct device_private_data), GFP_KERNEL);
         if(!dev_data){
-                dev_info(dev, "Cannot allocate memory for device private data\n");
-                err = -ENOMEM;
+                dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
+                ret = -ENOMEM;
         }
 
         /* Save i2c client */
@@ -118,8 +175,11 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
 
-        unsigned char buf[5] = "k0v4";
-        sysfs_i2c_write(buf, 5, client);
+        dev = root_device_register("my_sensor");
+        ret = platform_driver_sysfs_create_files(dev);
+        if(ret){
+                pr_info("sysfs_create_group failure.\n");
+        }
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -135,9 +195,9 @@ static int sysfs_i2c_remove(struct i2c_client *client)
         return 0;
 }
 
-
-/* File operation functions */ 
-
+/*
+ *File operation functions 
+ */ 
 static int sysfs_i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client)
 {
     int ret = i2c_master_send(client, buf, len);
@@ -156,7 +216,7 @@ static int sysfs_i2c_read(unsigned char *buf, unsigned int len, struct i2c_clien
 static int __init sysfs_i2c_init(void)
 {
         int ret;
-        
+
         ret = i2c_add_driver(&sysfs_i2c_driver);
         if(ret != 0){
                 pr_err("%s:driver registration failed i2c-slave, error=%d\n", __func__, ret);
@@ -171,7 +231,9 @@ static int __init sysfs_i2c_init(void)
 
 static void __exit sysfs_i2c_cleanup(void)
 {
+        /* Unregister i2c driver */
         i2c_del_driver(&sysfs_i2c_driver);
+
         pr_info("Module unloaded\n");
 }
 
