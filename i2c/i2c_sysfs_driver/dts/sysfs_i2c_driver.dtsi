@@ -1,0 +1,8 @@
+&i2c2 {
+    sysfs_i2c_driver: sysfs_i2c_driver@38 {
+        compatible = "sysfs_i2c_driver"; 
+        size = <1024>;
+        name = "Hello from k0v4";
+        reg = <0x38>;
+    };
+};
