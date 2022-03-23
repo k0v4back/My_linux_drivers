@@ -19,8 +19,8 @@ static int sysfs_i2c_remove(struct i2c_client *client);
 static int sysfs_i2c_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static int sysfs_i2c_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t store_size(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t store_send_data(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 
 /* Client data from DT */
@@ -70,39 +70,62 @@ static struct i2c_driver sysfs_i2c_driver = {
 };
 
 /*
- *  2 variables of struct device_attribute
+ *  3 variables of struct device_attribute
  */
-static DEVICE_ATTR(size, S_IRUGO|S_IWUSR, show_size, store_size);
+static DEVICE_ATTR(size, S_IRUGO, show_size, NULL);
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
+static DEVICE_ATTR(send_data, S_IWUSR, NULL, store_send_data);
+
+struct attribute *sysfs_i2c_attrs[] = 
+{
+        &dev_attr_size.attr,
+        &dev_attr_name.attr,
+        &dev_attr_send_data.attr,
+        NULL
+};
+
+struct attribute_group sysfs_i2c_attrs_group =
+{
+        .attrs = sysfs_i2c_attrs
+};
+
 
 /*
  * Device attribute functions
  */
 static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    pr_info("It is show_size\n");
-    return 0;
-}
+        /*
+        struct i2c_client *client;
+        void *data;
 
-static ssize_t store_size(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-    pr_info("It is store_size\n");
-    return 0;
+        client = dev_get_drvdata(dev);
+        data = i2c_get_clientdata(client);
+        pr_info("Client Address:0x Data:%p\n", data);
+        */
+        pr_info("It is show_size\n");
+
+        return 0;
 }
 
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    pr_info("It is show_name\n");
-    return 0;
+        pr_info("It is show_name\n");
+        return 0;
+}
+
+static ssize_t store_send_data(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        pr_info("It is store_send_data\n");
+        return 0;
 }
 
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
         int ret;
         
-        ret = sysfs_create_file(&dev->kobj, &dev_attr_size.attr);
-        ret = sysfs_create_file(&dev->kobj, &dev_attr_name.attr);
-
+        ret = sysfs_create_group(&dev->kobj, &sysfs_i2c_attrs_group);
+        
         return ret;
 }
 
@@ -157,8 +180,8 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device */
-        dev_data = devm_kzalloc(dev, sizeof(struct device_private_data), GFP_KERNEL);
-        if(!dev_data){
+        dev_data = kzalloc(sizeof(struct device_private_data), GFP_KERNEL);
+        if(dev_data == NULL){
                 dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
                 ret = -ENOMEM;
         }
@@ -166,14 +189,14 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
         /* Save i2c client */
         dev_data->client = client;
 
-        /* Save the device private data pointer in platform device structure */
-        i2c_set_clientdata(client, dev_data);
-
         /* Save data from DT */
         dev_data->pdata.size = pdata->size;
         dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device size = %d\n", dev_data->pdata.size);
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
+
+        /* Save the device private data pointer in platform device structure */
+        i2c_set_clientdata(client, dev_data);
 
         dev = root_device_register("my_sensor");
         ret = platform_driver_sysfs_create_files(dev);
