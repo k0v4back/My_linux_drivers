@@ -13,6 +13,9 @@
 #include<linux/mod_devicetable.h>
 #include<linux/of.h>
 #include<linux/of_device.h>
+#include <linux/delay.h>
+
+#define AHT10_COMAND_INIT 0b11100001
 
 static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int aht10_remove(struct i2c_client *client);
@@ -42,8 +45,12 @@ static struct of_device_id aht10_of_match[] = {
         { }
 };
 
+enum aht10_type {
+        aht10_t,
+};
+
 static const struct i2c_device_id aht10_id[] = {
-        { "aht10", 0 },
+        { "aht10", aht10_t },
         { }
 };
 MODULE_DEVICE_TABLE(i2c, aht10_id);
@@ -91,6 +98,25 @@ static int platform_driver_sysfs_create_files(struct device *dev)
         int ret;
         ret = sysfs_create_group(&dev->kobj, &aht10_attrs_group);
         return ret;
+}
+
+
+static int aht10_sensor_init(struct device_private_data *dev_data)
+{
+        int ret;
+        u8 status;
+
+        ret = i2c_master_send(dev_data->client, AHT10_COMAND_INIT, 1);
+        if(ret != 0)
+                return ret;
+
+        usleep_range(350000, 350000 + 100000);
+
+        ret = i2c_master_recv(dev_data->client, &status, 1);
+        if(ret != 1)
+                return -ENODATA;
+
+        return status;
 }
 
 
@@ -159,6 +185,9 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
                 pr_info("sysfs_create_group failure.\n");
         }
 
+        ret = aht10_sensor_init(dev_data);
+        dev_info(dev, "STATUS = %d\n", ret);
+
         dev_info(dev, "Probe function was successful\n");
 
         return 0;
@@ -178,20 +207,21 @@ static int aht10_remove(struct i2c_client *client)
  */ 
 static int aht10_write(unsigned char *buf, unsigned int len, struct i2c_client *client)
 {
-    int ret = i2c_master_send(client, buf, len);
+        int ret = i2c_master_send(client, buf, len);
 
-    return ret;
+        return ret;
 }
 
 static int aht10_read(unsigned char *buf, unsigned int len, struct i2c_client *client)
 {
-    int ret = i2c_master_recv(client, buf, len);
+        int ret = i2c_master_recv(client, buf, len);
 
-    return ret;
+        return ret;
 }
 
 
-static int __init aht10_init(void)
+
+static int __init aht10_driver_init(void)
 {
         int ret;
 
@@ -207,7 +237,7 @@ static int __init aht10_init(void)
         return 0;
 }
 
-static void __exit aht10_cleanup(void)
+static void __exit aht10_driver_cleanup(void)
 {
         /* Unregister i2c driver */
         i2c_del_driver(&aht10);
@@ -215,8 +245,8 @@ static void __exit aht10_cleanup(void)
         pr_info("Module unloaded\n");
 }
 
-module_init(aht10_init);
-module_exit(aht10_cleanup);
+module_init(aht10_driver_init);
+module_exit(aht10_driver_cleanup);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kosolapov Vadim (https://github.com/k0v4back)");
