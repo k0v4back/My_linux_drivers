@@ -1,0 +1,7 @@
+&i2c2 {
+    aht10: aht10@38 {
+        compatible = "aht10"; 
+        aht10,name = "aht10 driver by k0v4 (https://github.com/k0v4back)";
+        reg = <0x38>;
+    };
+};
