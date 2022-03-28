@@ -95,14 +95,6 @@ struct attribute_group sysfs_i2c_attrs_group =
  */
 static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        /*
-        struct i2c_client *client;
-        void *data;
-
-        client = dev_get_drvdata(dev);
-        data = i2c_get_clientdata(client);
-        pr_info("Client Address:0x Data:%p\n", data);
-        */
         pr_info("It is show_size\n");
 
         return 0;
@@ -116,8 +108,14 @@ static ssize_t show_name(struct device *dev, struct device_attribute *attr, char
 
 static ssize_t store_send_data(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-        pr_info("It is store_send_data\n");
-        return 0;
+        pr_info("count=%d, buf=%s", count, buf);
+
+        /*
+        struct device_private_data *dev_data = dev_get_drvdata(dev);
+        sysfs_i2c_write(buf, count, dev_data->client);
+        */
+
+        return count;
 }
 
 static int platform_driver_sysfs_create_files(struct device *dev)
@@ -180,7 +178,7 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device */
-        dev_data = kzalloc(sizeof(struct device_private_data), GFP_KERNEL);
+        dev_data = devm_kzalloc(&client->dev, sizeof(struct device_private_data), GFP_KERNEL);
         if(dev_data == NULL){
                 dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
                 ret = -ENOMEM;
