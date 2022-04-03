@@ -91,9 +91,9 @@ static int aht10_sensor_init(struct device_private_data *dev_data)
         int ret;
         u8 status;
 
-        const u8 cmd_init[] = {AHT10_COMAND_INIT};
+        const u8 command[] = {AHT10_COMAND_INIT};
 
-        ret = i2c_master_send(dev_data->client, cmd_init, 1);
+        ret = i2c_master_send(dev_data->client, command, 1);
         if(ret != 0)
                 return ret;
 
@@ -104,6 +104,28 @@ static int aht10_sensor_init(struct device_private_data *dev_data)
                 return -ENODATA;
 
         return status;
+}
+
+static u32 aht10_read_values(struct device_private_data *dev_data)
+{
+        int ret;
+        u32 temp;
+
+        const u8 command[] = {AHT10_COMAND_MEAS, 0x33, 0x00};
+        u8 raw_data[6];
+        struct i2c_client *client = dev_data->client;
+
+        ret = i2c_master_send(dev_data->client, command, 3);
+
+        usleep_range(350000, 350000 + 100000);
+
+        ret = i2c_master_recv(client, raw_data, 6);
+
+        temp = ((u32)(raw_data[3] & 0x0Fu) << 16u) | ((u32)raw_data[4] << 8u) | raw_data[5];
+
+        temp = temp * 200/1048576 - 50;
+
+        return temp;
 }
 
 
@@ -143,6 +165,7 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
         int ret;
+        u32 temp;
         
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(client);
@@ -174,6 +197,9 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
 
         ret = aht10_sensor_init(dev_data);
         dev_info(dev, "STATUS = %d\n", ret);
+        
+        temp = aht10_read_values(dev_data);
+        dev_info(dev, "TEMP = %u\n", temp);
 
         dev_info(dev, "Probe function was successful\n");
 
