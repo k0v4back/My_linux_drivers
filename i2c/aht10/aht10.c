@@ -1,29 +1,18 @@
-#include <linux/kernel.h>
-#include <linux/slab.h>
-#include <linux/sysfs.h>
-#include <linux/i2c.h>
-#include<linux/module.h>
-#include<linux/fs.h>
-#include<linux/cdev.h>
-#include<linux/device.h>
-#include<linux/kdev_t.h>
-#include<linux/uaccess.h>
-#include <linux/platform_device.h>
-#include<linux/slab.h>
-#include<linux/mod_devicetable.h>
-#include<linux/of.h>
-#include<linux/of_device.h>
 #include <linux/delay.h>
+#include <linux/hwmon.h>
+#include <linux/i2c.h>
+#include <linux/ktime.h>
+#include <linux/module.h>
 
-#define AHT10_COMAND_INIT 0b11100001
+#define AHT10_COMAND_INIT   0b11100001
+#define AHT10_COMAND_MEAS   0b10101100
+#define AHT10_COMAND_RESET  0b10111010
 
 static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int aht10_remove(struct i2c_client *client);
 static int aht10_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static int aht10_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
-static ssize_t show_size(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t store_send_data(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 
 /* Client data from DT */
@@ -45,12 +34,8 @@ static struct of_device_id aht10_of_match[] = {
         { }
 };
 
-enum aht10_type {
-        aht10_t,
-};
-
 static const struct i2c_device_id aht10_id[] = {
-        { "aht10", aht10_t },
+        { "aht10", 0 },
         { }
 };
 MODULE_DEVICE_TABLE(i2c, aht10_id);
@@ -106,7 +91,9 @@ static int aht10_sensor_init(struct device_private_data *dev_data)
         int ret;
         u8 status;
 
-        ret = i2c_master_send(dev_data->client, AHT10_COMAND_INIT, 1);
+        const u8 cmd_init[] = {AHT10_COMAND_INIT};
+
+        ret = i2c_master_send(dev_data->client, cmd_init, 1);
         if(ret != 0)
                 return ret;
 
