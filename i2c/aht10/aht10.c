@@ -3,6 +3,7 @@
 #include <linux/i2c.h>
 #include <linux/ktime.h>
 #include <linux/module.h>
+#include <linux/sysfs.h>
 
 #define AHT10_COMAND_INIT   0b11100001
 #define AHT10_COMAND_MEAS   0b10101100
@@ -13,7 +14,10 @@ static int aht10_remove(struct i2c_client *client);
 static int aht10_write(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static int aht10_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
+static int aht10_sensor_init(struct i2c_client *client);
+static u32 aht10_read_values(struct i2c_client *client);
 
 /* Client data from DT */
 static struct platform_device_data {
@@ -52,14 +56,17 @@ static struct i2c_driver aht10 = {
         .id_table       = aht10_id,
 };
 
+
 /*
  *  Variables of struct device_attribute
  */
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
+static DEVICE_ATTR(temp, S_IRUGO, show_temp, NULL);
 
 static struct attribute *aht10_attrs[] = 
 {
         &dev_attr_name.attr,
+        &dev_attr_temp.attr,
         NULL
 };
 
@@ -78,44 +85,62 @@ static ssize_t show_name(struct device *dev, struct device_attribute *attr, char
         return 0;
 }
 
+static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        struct i2c_client *client;
+        void *data;
+        int temp;
+
+        client = dev_get_drvdata(dev);
+        data = i2c_get_clientdata(client);
+        
+        temp = aht10_read_values(client);
+        dev_info(dev, "TEMP = %u\n", temp);
+
+        //pr_info("It is show_name\n");
+        
+        return 0;
+}
+
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
         int ret;
+
         ret = sysfs_create_group(&dev->kobj, &aht10_attrs_group);
+
         return ret;
 }
 
 
-static int aht10_sensor_init(struct device_private_data *dev_data)
+static int aht10_sensor_init(struct i2c_client *client)
 {
         int ret;
         u8 status;
 
         const u8 command[] = {AHT10_COMAND_INIT};
 
-        ret = i2c_master_send(dev_data->client, command, 1);
+        ret = i2c_master_send(client, command, 1);
         if(ret != 0)
                 return ret;
 
         usleep_range(350000, 350000 + 100000);
 
-        ret = i2c_master_recv(dev_data->client, &status, 1);
+        ret = i2c_master_recv(client, &status, 1);
         if(ret != 1)
                 return -ENODATA;
 
         return status;
 }
 
-static u32 aht10_read_values(struct device_private_data *dev_data)
+static u32 aht10_read_values(struct i2c_client *client)
 {
         int ret;
         u32 temp;
 
         const u8 command[] = {AHT10_COMAND_MEAS, 0x33, 0x00};
         u8 raw_data[6];
-        struct i2c_client *client = dev_data->client;
 
-        ret = i2c_master_send(dev_data->client, command, 3);
+        ret = i2c_master_send(client, command, 3);
 
         usleep_range(350000, 350000 + 100000);
 
@@ -132,7 +157,7 @@ static u32 aht10_read_values(struct device_private_data *dev_data)
 /*
  * Check device tree and get data
  */
-struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
+static struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
 {
         struct device *dev = &client->dev;
         struct device_node *dev_node = dev->of_node;
@@ -190,15 +215,16 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
         i2c_set_clientdata(client, dev_data);
 
         dev = root_device_register("aht10");
+        dev_set_drvdata(dev, dev_data->client);
         ret = platform_driver_sysfs_create_files(dev);
         if(ret){
                 pr_info("sysfs_create_group failure.\n");
         }
 
-        ret = aht10_sensor_init(dev_data);
+        ret = aht10_sensor_init(dev_data->client);
         dev_info(dev, "STATUS = %d\n", ret);
         
-        temp = aht10_read_values(dev_data);
+        temp = aht10_read_values(dev_data->client);
         dev_info(dev, "TEMP = %u\n", temp);
 
         dev_info(dev, "Probe function was successful\n");
@@ -209,6 +235,10 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
 static int aht10_remove(struct i2c_client *client)
 {
         struct device *dev = &client->dev;
+
+        /* Delete existing sysfs group */
+        sysfs_remove_group(&dev->kobj, &aht10_attrs_group);
+
 
         dev_info(dev, "Remove Function is invoked...\n"); 
 
