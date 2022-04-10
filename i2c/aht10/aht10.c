@@ -275,7 +275,7 @@ static int __init aht10_driver_init(void)
                 return ret;
         }
 
-        pr_info("Platform I2C driver loaded\n");
+        pr_info("Platform aht10 driver loaded\n");
 
         return 0;
 }

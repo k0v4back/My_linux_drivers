@@ -1,0 +1,7 @@
+&i2c2 {
+    ssd1306: ssd1306@3C {
+        compatible = "ssd1306"; 
+        ssd1306,name = "ssd1306 driver";
+        reg = <0x3C>;
+    };
+};
