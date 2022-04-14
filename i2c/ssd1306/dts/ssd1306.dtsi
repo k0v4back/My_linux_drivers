@@ -1,7 +1,7 @@
 &i2c2 {
-    ssd1306: ssd1306@3C {
+    ssd1306: ssd1306@3c {
         compatible = "ssd1306"; 
         ssd1306,name = "ssd1306 driver";
-        reg = <0x3C>;
+        reg = <0x3c>;
     };
 };
