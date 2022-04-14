@@ -407,8 +407,8 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         }
 
         ssd1306_display_init();
-        ssd1306_set_cursor(0,0);  
-        ssd1306_string("k0v4\n\n");
+        ssd1306_set_cursor(3,25);  
+        ssd1306_string("SSD1306 driver");
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -422,7 +422,7 @@ static int ssd1306_remove(struct i2c_client *client)
         /* Clear display */
         ssd1306_set_cursor(0,0);
         ssd1306_fill(0x00);
-        SSD1306_Write(true, 0xAE);
+        ssd1306_write(true, 0xAE);
 
         dev_info(dev, "Remove Function is invoked...\n"); 
 
