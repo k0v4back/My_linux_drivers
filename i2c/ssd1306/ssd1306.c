@@ -9,26 +9,25 @@ static int i2c_write(unsigned char *buf, unsigned int len);
 static int i2c_read(unsigned char *buf, unsigned int len);
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
-static int SSD1306_DisplayInit(void);
-static void SSD1306_Write(bool is_cmd, unsigned char data);
-static void SSD1306_SetCursor( uint8_t lineNo, uint8_t cursorPos);
-static void SSD1306_String(unsigned char *str);
-static void SSD1306_PrintChar(unsigned char c);
-static void SSD1306_Fill(unsigned char data);
-static void SSD1306_GoToNextLine(void);
+static int ssd1306_display_init(void);
+static void ssd1306_write(bool is_cmd, unsigned char data);
+static void ssd1306_set_cursor( uint8_t lineNo, uint8_t cursorPos);
+static void ssd1306_string(unsigned char *str);
+static void ssd1306_print_char(unsigned char c);
+static void ssd1306_fill(unsigned char data);
+static void ssd1306_go_to_next_line(void);
 
-#define SSD1306_SLAVE_ADDR      (       0x3C )              // SSD1306 OLED Slave Address
 #define SSD1306_MAX_SEG         (        128 )              // Maximum segment
 #define SSD1306_MAX_LINE        (          7 )              // Maximum line
 #define SSD1306_DEF_FONT_SIZE   (          5 )              // Default font size
 
-static uint8_t SSD1306_LineNum   = 0;
-static uint8_t SSD1306_CursorPos = 0;
-static uint8_t SSD1306_FontSize  = 5;
+static uint8_t ssd1306_line_num   = 0;
+static uint8_t ssd1306_cursor_pos = 0;
+static uint8_t ssd1306_font_size  = SSD1306_DEF_FONT_SIZE;
 
-static struct i2c_client *client_global = NULL;  // I2C Cient Structure (In our case it is OLED)
+static struct i2c_client *i2c_client_global = NULL;  // I2C Cient Structure (In our case it is OLED)
 
-static const unsigned char ssd1306_font[][5]= 
+static const unsigned char ssd1306_font[][SSD1306_DEF_FONT_SIZE]= 
 {
         {0x00, 0x00, 0x00, 0x00, 0x00},   // space
         {0x00, 0x00, 0x2f, 0x00, 0x00},   // !
@@ -138,10 +137,8 @@ static struct platform_device_data {
         const char *name;
 };
 
-/* Device private data structure */
 static struct device_private_data {
         struct platform_device_data pdata;
-        struct i2c_client *client;
 };
 
 static struct of_device_id ssd1306_of_match[] = {
@@ -196,50 +193,59 @@ static ssize_t show_name(struct device *dev, struct device_attribute *attr, char
         return 0;
 }
 
+static int platform_driver_sysfs_create_files(struct device *dev)
+{
+        int ret;
+
+        ret = sysfs_create_group(&dev->kobj, &ssd1306_attrs_group);
+
+        return ret;
+}
+
 /*
  * ssd1306 oled display functions
  */
-static int SSD1306_DisplayInit(void)
+static int ssd1306_display_init(void)
 {
         msleep(100);
 
         /*
          * Commands to initialize the SSD_1306 OLED Display
          */
-        SSD1306_Write(true, 0xAE); // Entire Display OFF
-        SSD1306_Write(true, 0xD5); // Set Display Clock Divide Ratio and Oscillator Frequency
-        SSD1306_Write(true, 0x80); // Default Setting for Display Clock Divide Ratio and Oscillator Frequency that is recommended
-        SSD1306_Write(true, 0xA8); // Set Multiplex Ratio
-        SSD1306_Write(true, 0x3F); // 64 COM lines
-        SSD1306_Write(true, 0xD3); // Set display offset
-        SSD1306_Write(true, 0x00); // 0 offset
-        SSD1306_Write(true, 0x40); // Set first line as the start line of the display
-        SSD1306_Write(true, 0x8D); // Charge pump
-        SSD1306_Write(true, 0x14); // Enable charge dump during display on
-        SSD1306_Write(true, 0x20); // Set memory addressing mode
-        SSD1306_Write(true, 0x00); // Horizontal addressing mode
-        SSD1306_Write(true, 0xA1); // Set segment remap with column address 127 mapped to segment 0
-        SSD1306_Write(true, 0xC8); // Set com output scan direction, scan from com63 to com 0
-        SSD1306_Write(true, 0xDA); // Set com pins hardware configuration
-        SSD1306_Write(true, 0x12); // Alternative com pin configuration, disable com left/right remap
-        SSD1306_Write(true, 0x81); // Set contrast control
-        SSD1306_Write(true, 0x80); // Set Contrast to 128
-        SSD1306_Write(true, 0xD9); // Set pre-charge period
-        SSD1306_Write(true, 0xF1); // Phase 1 period of 15 DCLK, Phase 2 period of 1 DCLK
-        SSD1306_Write(true, 0xDB); // Set Vcomh deselect level
-        SSD1306_Write(true, 0x20); // Vcomh deselect level ~ 0.77 Vcc
-        SSD1306_Write(true, 0xA4); // Entire display ON, resume to RAM content display
-        SSD1306_Write(true, 0xA6); // Set Display in Normal Mode, 1 = ON, 0 = OFF
-        SSD1306_Write(true, 0x2E); // Deactivate scroll
-        SSD1306_Write(true, 0xAF); // Display ON in normal mode
+        ssd1306_write(true, 0xAE); // Entire Display OFF
+        ssd1306_write(true, 0xD5); // Set Display Clock Divide Ratio and Oscillator Frequency
+        ssd1306_write(true, 0x80); // Default Setting for Display Clock Divide Ratio and Oscillator Frequency that is recommended
+        ssd1306_write(true, 0xA8); // Set Multiplex Ratio
+        ssd1306_write(true, 0x3F); // 64 COM lines
+        ssd1306_write(true, 0xD3); // Set display offset
+        ssd1306_write(true, 0x00); // 0 offset
+        ssd1306_write(true, 0x40); // Set first line as the start line of the display
+        ssd1306_write(true, 0x8D); // Charge pump
+        ssd1306_write(true, 0x14); // Enable charge dump during display on
+        ssd1306_write(true, 0x20); // Set memory addressing mode
+        ssd1306_write(true, 0x00); // Horizontal addressing mode
+        ssd1306_write(true, 0xA1); // Set segment remap with column address 127 mapped to segment 0
+        ssd1306_write(true, 0xC8); // Set com output scan direction, scan from com63 to com 0
+        ssd1306_write(true, 0xDA); // Set com pins hardware configuration
+        ssd1306_write(true, 0x12); // Alternative com pin configuration, disable com left/right remap
+        ssd1306_write(true, 0x81); // Set contrast control
+        ssd1306_write(true, 0x80); // Set Contrast to 128
+        ssd1306_write(true, 0xD9); // Set pre-charge period
+        ssd1306_write(true, 0xF1); // Phase 1 period of 15 DCLK, Phase 2 period of 1 DCLK
+        ssd1306_write(true, 0xDB); // Set Vcomh deselect level
+        ssd1306_write(true, 0x20); // Vcomh deselect level ~ 0.77 Vcc
+        ssd1306_write(true, 0xA4); // Entire display ON, resume to RAM content display
+        ssd1306_write(true, 0xA6); // Set Display in Normal Mode, 1 = ON, 0 = OFF
+        ssd1306_write(true, 0x2E); // Deactivate scroll
+        ssd1306_write(true, 0xAF); // Display ON in normal mode
 
         //Clear the display
-        SSD1306_Fill(0x00);
+        ssd1306_fill(0x00);
 
         return 0;
 }
 
-static void SSD1306_Write(bool is_cmd, unsigned char data)
+static void ssd1306_write(bool is_cmd, unsigned char data)
 {
         unsigned char buf[2] = {0};
         int ret;
@@ -256,31 +262,31 @@ static void SSD1306_Write(bool is_cmd, unsigned char data)
         ret = i2c_write(buf, 2);
 }
 
-static void SSD1306_SetCursor( uint8_t lineNo, uint8_t cursorPos)
+static void ssd1306_set_cursor( uint8_t lineNo, uint8_t cursorPos)
 {
         /* Move the Cursor to specified position only if it is in range */
         if((lineNo <= SSD1306_MAX_LINE) && (cursorPos < SSD1306_MAX_SEG)){
-                SSD1306_LineNum   = lineNo;             // Save the specified line number
-                SSD1306_CursorPos = cursorPos;          // Save the specified cursor position
+                ssd1306_line_num   = lineNo;             // Save the specified line number
+                ssd1306_cursor_pos = cursorPos;          // Save the specified cursor position
 
-                SSD1306_Write(true, 0x21);              // cmd for the column start and end address
-                SSD1306_Write(true, cursorPos);         // column start addr
-                SSD1306_Write(true, SSD1306_MAX_SEG-1); // column end addr
+                ssd1306_write(true, 0x21);              // cmd for the column start and end address
+                ssd1306_write(true, cursorPos);         // column start addr
+                ssd1306_write(true, SSD1306_MAX_SEG-1); // column end addr
 
-                SSD1306_Write(true, 0x22);              // cmd for the page start and end address
-                SSD1306_Write(true, lineNo);            // page start addr
-                SSD1306_Write(true, SSD1306_MAX_LINE);  // page end addr
+                ssd1306_write(true, 0x22);              // cmd for the page start and end address
+                ssd1306_write(true, lineNo);            // page start addr
+                ssd1306_write(true, SSD1306_MAX_LINE);  // page end addr
         }
 }
 
-static void SSD1306_String(unsigned char *str)
+static void ssd1306_string(unsigned char *str)
 {
         while(*str){
-                SSD1306_PrintChar(*str++);
+                ssd1306_print_char(*str++);
         }
 }
 
-static void SSD1306_PrintChar(unsigned char c)
+static void ssd1306_print_char(unsigned char c)
 {
         uint8_t data_byte;
         uint8_t temp = 0;
@@ -289,8 +295,8 @@ static void SSD1306_PrintChar(unsigned char c)
         * If we character is greater than segment len or we got new line charcter
         * then move the cursor to the new line
         */ 
-        if(((SSD1306_CursorPos + SSD1306_FontSize) >= SSD1306_MAX_SEG) || (c == '\n')){
-                SSD1306_GoToNextLine();
+        if(((ssd1306_cursor_pos + ssd1306_font_size) >= SSD1306_MAX_SEG) || (c == '\n')){
+                ssd1306_go_to_next_line();
         }
         
         // print charcters other than new line
@@ -299,49 +305,41 @@ static void SSD1306_PrintChar(unsigned char c)
                 do{
                         data_byte= ssd1306_font[c][temp]; // Get the data to be displayed from LookUptable
 
-                        SSD1306_Write(false, data_byte);  // write data to the OLED
-                        SSD1306_CursorPos++;
+                        ssd1306_write(false, data_byte);  // write data to the OLED
+                        ssd1306_cursor_pos++;
 
                         temp++;
 
-                }while(temp < SSD1306_FontSize);
+                }while(temp < ssd1306_font_size);
                 
-                SSD1306_Write(false, 0x00);         //Display the data
-                SSD1306_CursorPos++;
+                ssd1306_write(false, 0x00);         //Display the data
+                ssd1306_cursor_pos++;
         }
 }
 
-static void SSD1306_Fill(unsigned char data)
+static void ssd1306_fill(unsigned char data)
 {
         unsigned int total  = 128 * 8;  // 8 pages x 128 segments x 8 bits of data
         unsigned int i      = 0;
 
         //Fill the Display
         for(i = 0; i < total; i++){
-                SSD1306_Write(false, data);
+                ssd1306_write(false, data);
         }
 }
 
-static void  SSD1306_GoToNextLine( void )
+static void  ssd1306_go_to_next_line( void )
 {
         /*
          * Increment the current line number.
          * roll it back to first line, if it exceeds the limit. 
          */
-        SSD1306_LineNum++;
-        SSD1306_LineNum = (SSD1306_LineNum & SSD1306_MAX_LINE);
+        ssd1306_line_num++;
+        ssd1306_line_num = (ssd1306_line_num & SSD1306_MAX_LINE);
 
-        SSD1306_SetCursor(SSD1306_LineNum,0); /* Finally move it to next line */
+        ssd1306_set_cursor(ssd1306_line_num,0); /* Finally move it to next line */
 }
 
-static int platform_driver_sysfs_create_files(struct device *dev)
-{
-        int ret;
-
-        ret = sysfs_create_group(&dev->kobj, &ssd1306_attrs_group);
-
-        return ret;
-}
 
 /* Check device tree and get data*/
 struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
@@ -392,26 +390,25 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         }
 
         /* Save i2c client */
-        dev_data->client = client;
-        client_global = client;
+        i2c_client_global = client;
 
         /* Save data from DT */
         dev_data->pdata.name= pdata->name;
         dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
 
         /* Save the device private data pointer in platform device structure */
-        i2c_set_clientdata(client, dev_data);
+        i2c_set_clientdata(i2c_client_global, dev_data);
 
         dev = root_device_register("ssd1306");
-        dev_set_drvdata(dev, dev_data->client);
+        dev_set_drvdata(dev, i2c_client_global);
         ret = platform_driver_sysfs_create_files(dev);
         if(ret){
                 pr_info("sysfs_create_group failure.\n");
         }
 
-        SSD1306_DisplayInit();
-        SSD1306_SetCursor(0,0);  
-        SSD1306_String("Welcome\nTo\nEmbeTronicX\n\n");
+        ssd1306_display_init();
+        ssd1306_set_cursor(0,0);  
+        ssd1306_string("k0v4\n\n");
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -421,6 +418,11 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
 static int ssd1306_remove(struct i2c_client *client)
 {
         struct device *dev = &client->dev;
+
+        /* Clear display */
+        ssd1306_set_cursor(0,0);
+        ssd1306_fill(0x00);
+        SSD1306_Write(true, 0xAE);
 
         dev_info(dev, "Remove Function is invoked...\n"); 
 
@@ -432,14 +434,14 @@ static int ssd1306_remove(struct i2c_client *client)
 
 static int i2c_write(unsigned char *buf, unsigned int len)
 {
-    int ret = i2c_master_send(client_global, buf, len);
+    int ret = i2c_master_send(i2c_client_global, buf, len);
 
     return ret;
 }
 
 static int i2c_read(unsigned char *buf, unsigned int len)
 {
-    int ret = i2c_master_recv(client_global, buf, len);
+    int ret = i2c_master_recv(i2c_client_global, buf, len);
 
     return ret;
 }
