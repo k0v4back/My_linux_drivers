@@ -15,9 +15,11 @@ static int aht10_write(unsigned char *buf, unsigned int len, struct i2c_client *
 static int aht10_read(unsigned char *buf, unsigned int len, struct i2c_client *client);
 static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_humid(struct device *dev, struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 static int aht10_sensor_init(struct i2c_client *client);
-static u32 aht10_read_values(struct i2c_client *client);
+static u32 aht10_read_temp(struct i2c_client *client);
+static u32 aht10_read_humid(struct i2c_client *client);
 
 /* Client data from DT */
 static struct platform_device_data {
@@ -62,11 +64,13 @@ static struct i2c_driver aht10 = {
  */
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 static DEVICE_ATTR(temp, S_IRUGO, show_temp, NULL);
+static DEVICE_ATTR(humid, S_IRUGO, show_humid, NULL);
 
 static struct attribute *aht10_attrs[] = 
 {
         &dev_attr_name.attr,
         &dev_attr_temp.attr,
+        &dev_attr_humid.attr,
         NULL
 };
 
@@ -94,10 +98,23 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char
         client = dev_get_drvdata(dev);
         data = i2c_get_clientdata(client);
         
-        temp = aht10_read_values(client);
+        temp = aht10_read_temp(client);
         dev_info(dev, "TEMP = %u\n", temp);
+        
+        return 0;
+}
 
-        //pr_info("It is show_name\n");
+static ssize_t show_humid(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        struct i2c_client *client;
+        void *data;
+        int humid;
+
+        client = dev_get_drvdata(dev);
+        data = i2c_get_clientdata(client);
+        
+        humid = aht10_read_humid(client);
+        dev_info(dev, "HUMID = %u\n", humid);
         
         return 0;
 }
@@ -132,7 +149,7 @@ static int aht10_sensor_init(struct i2c_client *client)
         return status;
 }
 
-static u32 aht10_read_values(struct i2c_client *client)
+static u32 aht10_read_temp(struct i2c_client *client)
 {
         int ret;
         u32 temp;
@@ -153,6 +170,26 @@ static u32 aht10_read_values(struct i2c_client *client)
         return temp;
 }
 
+static u32 aht10_read_humid(struct i2c_client *client)
+{
+        int ret;
+        u32 humid;
+
+        const u8 command[] = {AHT10_COMAND_MEAS, 0x33, 0x00};
+        u8 raw_data[6];
+
+        ret = i2c_master_send(client, command, 3);
+
+        usleep_range(350000, 350000 + 100000);
+
+        ret = i2c_master_recv(client, raw_data, 6);
+
+        humid = ((u32)(raw_data[1] << 12u)) | ((u32)raw_data[2] << 4u) | (raw_data[3] >> 4u);
+
+        humid = humid * 100/1048576;
+
+        return humid;
+}
 
 /*
  * Check device tree and get data
@@ -191,6 +228,7 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
         struct platform_device_data *pdata;
         int ret;
         u32 temp;
+        u32 humid;
         
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(client);
@@ -224,8 +262,11 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
         ret = aht10_sensor_init(dev_data->client);
         dev_info(dev, "STATUS = %d\n", ret);
         
-        temp = aht10_read_values(dev_data->client);
+        temp = aht10_read_temp(dev_data->client);
         dev_info(dev, "TEMP = %u\n", temp);
+        
+        humid = aht10_read_humid(dev_data->client);
+        dev_info(dev, "HUMID = %u\n", humid);
 
         dev_info(dev, "Probe function was successful\n");
 
