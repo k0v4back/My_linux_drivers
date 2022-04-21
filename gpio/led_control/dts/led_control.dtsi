@@ -1,15 +1,15 @@
 / {
-    led_control {
+    led_control_devs {
         compatible = "org,led_control";
         
-        gpio1{
-            label = "P9 PIN25 gpio3.21"
-            bone-gpios = <&gpio3 21 GPIO_ACTIVE_HIGHT>;
+        gpio1 {
+            label = "P9 PIN25 gpio3.21";
+            bone-gpios = <&gpio3 21 GPIO_ACTIVE_HIGH>;
         };
 
-        gpio2{
-            label = "P9 PIN27 gpio3.19"
-            bone-gpios = <&gpio3 19 GPIO_ACTIVE_HIGHT>;
+        gpio2 {
+            label = "P9 PIN27 gpio3.19";
+            bone-gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;
         };
     };
 };

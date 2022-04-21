@@ -54,7 +54,7 @@ ssize_t direction_store(struct device *dev, struct device_attribute *attr, \
     int ret;
     struct device_private_data *device_data = dev_get_drvdata(dev);
 
-    if(sysfs_streq(buf, "in") )
+    if(sysfs_streq(buf, "in"))
         ret = gpiod_direction_input(device_data->desc);
     else if (sysfs_streq(buf, "out"))
         ret = gpiod_direction_output(device_data->desc, 0);
@@ -198,7 +198,7 @@ int gpio_led_control_probe(struct platform_device *pdev)
             return ret;
         }
 
-        /* Create devices under /sys/class/bone_gpios */
+        /* Create devices under /sys/class/gpio_led_control */
         gpio_driver_private_data.dev[i] = device_create_with_groups(gpio_driver_private_data.class_gpio, \
                 dev, 0, device_data, gpio_attr_groups, device_data->label);
         if(IS_ERR(gpio_driver_private_data.dev[i])){
@@ -236,8 +236,8 @@ int __init gpio_led_control_init(void)
         return ret; 
     }
 
-    pr_info("Platform led_control driver loaded\n");
     platform_driver_register(&gpio_led_control_platform_driver);
+    pr_info("Platform led_control driver loaded\n");
 
     return 0;
 }
