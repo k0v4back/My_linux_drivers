@@ -1,0 +1,27 @@
+/ {
+    dht11 {
+        compatible = "org,dht11";
+        pinctrl-single,names = "default";
+        pinctrl-0 = <&dht11_gpios>;
+        
+        gpio1 {
+            label = "gpio2.7";
+            bone-gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;
+        };
+    };
+};
+
+&tda19988 {
+    status = "disabled";
+};
+
+&am33xx_pinmux {
+    
+    dht11_gpios: bone_dht11_gpios {
+        pinctrl-single,pins = < 
+                    AM33XX_PADCONF(AM335X_PIN_LCD_DATA1,PIN_OUTPUT,MUX_MODE7) 
+        >;
+
+    };
+
+};
