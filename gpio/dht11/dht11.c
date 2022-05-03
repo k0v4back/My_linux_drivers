@@ -19,9 +19,6 @@ enum DHT11_RESPONSE {
         SUCCESS_DHT11_INIT
 };
 
-static int dht11_probe(struct platform_device *);
-static int dht11_remove(struct platform_device *);
-
 /* Device private data structure */
 static struct device_private_data
 {
@@ -38,48 +35,52 @@ static struct driver_private_data
         struct device *dev;
 };
 
-static struct driver_private_data dht11_driver_private_data;
+static int dht11_probe(struct platform_device *);
+static int dht11_remove(struct platform_device *);
+static int dht11_get_data(struct device_private_data *);
+
+struct driver_private_data dht11_driver_private_data;
 
 /* Create device attributes */
 static ssize_t temperature_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        /*
-            struct device_private_data *device_data = dev_get_drvdata(dev);
-            return sprintf(buf, "%s\n", device_data->label);
-         */
+        int ret = 0;
+        struct device_private_data *dev_data = dev_get_drvdata(dev);
 
-        return 0;
+        ret = sprintf(buf, "%d\n", dev_data->temperature);
+
+        return ret;
 }
 
 static ssize_t humidity_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        /*
-            struct device_private_data *device_data = dev_get_drvdata(dev);
-            return sprintf(buf, "%s\n", device_data->label);
-         */
+        int ret = 0;
+        struct device_private_data *dev_data = dev_get_drvdata(dev);
 
-        return 0;
+        ret = sprintf(buf, "%d\n", dev_data->humidity);
+
+        return ret;
 }
 
-static ssize_t label_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        /*
-            struct device_private_data *device_data = dev_get_drvdata(dev);
-            return sprintf(buf, "%s\n", device_data->label);
-         */
+        int ret = 0;
+        struct device_private_data *dev_data = dev_get_drvdata(dev);
 
-        return 0;
+        ret = sprintf(buf, "%s\n", dev_data->name);
+
+        return ret;
 }
 
 static DEVICE_ATTR_RO(temperature);
 static DEVICE_ATTR_RO(humidity);
-static DEVICE_ATTR_RO(label);
+static DEVICE_ATTR_RO(show);
 
 static struct attribute *gpio_attrs[] = 
 {
         &dev_attr_temperature.attr,
         &dev_attr_humidity.attr,
-        &dev_attr_label.attr,
+        &dev_attr_show.attr,
         NULL
 };
 
@@ -164,7 +165,7 @@ static int dht11_probe(struct platform_device *pdev)
                 return -EINVAL;
         }
         
-        ret = dht11_get_data(device_data);
+        dht11_get_data(device_data);
 
         return 0;
 }
@@ -235,7 +236,8 @@ static int dht11_read_byte(struct device_private_data *device_data)
 
 static int dht11_get_data(struct device_private_data *device_data)
 {
-        u8 ret = 0;
+        int ret = 0;
+        int i = 0;
         u8 data[5] = {0};
 
         ret = dht11_init(device_data);
@@ -245,7 +247,7 @@ static int dht11_get_data(struct device_private_data *device_data)
         }
 
         /* Read bytes */
-        for(int i = 0; i < 5; i++){
+        for(i = 0; i < 5; i++){
                 data[i] = dht11_read_byte(device_data);
         }
 
@@ -254,6 +256,8 @@ static int dht11_get_data(struct device_private_data *device_data)
                 device_data->humidity = data[0];
                 device_data->temperature = data[2];
         }
+
+        return ret;
 }
 
 
@@ -264,12 +268,11 @@ static int __init dht11_sysfs_init(void)
         dht11_driver_private_data.class_dht11 = class_create(THIS_MODULE, "dht11");
         if(IS_ERR(dht11_driver_private_data.class_dht11)){
             pr_err("Class creation failed\n");
-            ret = PTR_ERR(dht11_driver_private_data.class_dht11);
             return ret; 
         }
 
         platform_driver_register(&dht11_platform_driver);
-        pr_info("Platform dht11 driver loaded\n");
+        pr_info("Platform dht11 driver loaded success\n");
 
         return 0;
 }
