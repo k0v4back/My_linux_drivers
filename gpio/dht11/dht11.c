@@ -20,16 +20,18 @@ enum DHT11_RESPONSE {
 };
 
 /* Device private data structure */
-static struct device_private_data
+struct device_private_data
 {
         const char *name;
+        char label[20];
         int temperature;
         int humidity;
         struct gpio_desc *desc;
+        int count_of_devices;
 };
 
 /* Driver private data structure */
-static struct driver_private_data
+struct driver_private_data
 {
         struct class *class_dht11;
         struct device *dev;
@@ -154,6 +156,43 @@ static int dht11_probe(struct platform_device *pdev)
         struct device *dev = &pdev->dev;
         struct device_private_data *device_data;
 
+        /* Parent device node */
+        struct device_node *parent = pdev->dev.of_node;
+
+        /* Child device node */
+        struct device_node *child = NULL;
+
+
+        /* Allocate memory for device private data */
+        device_data = devm_kzalloc(dev, sizeof(struct device_private_data), GFP_KERNEL);
+        if(!device_data){
+                dev_err(dev, "Cannot allocate memory\n");
+                return -ENOMEM;
+        }
+
+        device_data->count_of_devices = of_get_child_count(parent);
+        if(!device_data->count_of_devices){
+                dev_err(dev, "No devices found\n");
+                return -EINVAL;
+        }
+
+        dev_info(dev, "Total devices found = %d\n", device_data->count_of_devices);
+
+        for_each_available_child_of_node(parent, child)
+        {
+                /* Fill with data device private data structer from device tree node */
+                if(of_property_read_string(child, "label", &name)){
+                        dev_warn(dev, "Missing lable information \n");
+                        snprintf(device_data->label, sizeof(device_data->label), "%d", 1);
+                }else{
+                        strcpy(device_data->label, name);
+                        dev_info(dev, "GPIO label = %s\n", device_data->label);
+                }
+        }
+
+        dht11_driver_private_data.dev = devm_kzalloc(dev, sizeof(struct device *) * \
+                                device_data->count_of_devices , GFP_KERNEL);
+
         device_data = get_platform_data_from_dt(dev);
         if(IS_ERR(device_data))
                 return PTR_ERR(device_data);
@@ -164,8 +203,28 @@ static int dht11_probe(struct platform_device *pdev)
                 dev_err(dev, "GPIO error\n");
                 return -EINVAL;
         }
+
+        /* Get GPIO as a reference to GPIO descriptor */
+        device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child->fwnode, \
+                                GPIOD_ASIS, device_data->label);
+        if(IS_ERR(device_data->desc)){
+                ret = PTR_ERR(device_data->desc); //Extract error
+                if(ret == -ENOENT)
+                        dev_err(dev,"No GPIO has been assigned to the requested function and/or index\n");
+                return ret;
+        }
+
+        /* Create devices under /sys/class/dht11 */
+        dht11_driver_private_data.dev = device_create_with_groups(dht11_driver_private_data.class_dht11, \
+                            dev, 0, device_data, gpio_dht11_attr_groups, device_data->label);
+        if(IS_ERR(dht11_driver_private_data.dev)){
+                dev_err(dev, "Error in device_create \n");
+                return PTR_ERR(dht11_driver_private_data.dev);
+        }
         
         dht11_get_data(device_data);
+
+        dev_info(dev, "Probe function was successful\n");
 
         return 0;
 }
@@ -277,7 +336,7 @@ static int __init dht11_sysfs_init(void)
         return 0;
 }
 
-static void __exit dht11_exit(void)
+static void __exit dht11_sysfs_exit(void)
 {
         platform_driver_unregister(&dht11_platform_driver);
         class_destroy(dht11_driver_private_data.class_dht11);
@@ -286,7 +345,7 @@ static void __exit dht11_exit(void)
 }
 
 module_init(dht11_sysfs_init);
-module_exit(dht11_exit);
+module_exit(dht11_sysfs_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kosolapov Vadim (https://github.com/k0v4back)");
