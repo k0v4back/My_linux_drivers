@@ -6,10 +6,7 @@
         status = "okay";
         dht11,name = "DHT11 sensor";
         
-        data_pin {
-            label = "gpio2.7";
-            bone-gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;
-        };
+        data-gpio = <&gpio2 7 GPIO_ACTIVE_HIGH>;
     };
 };
 

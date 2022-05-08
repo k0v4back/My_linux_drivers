@@ -22,7 +22,6 @@ enum DHT11_RESPONSE {
 /* Device private data structure */
 struct device_private_data
 {
-        char label[20];
         int temperature;
         int humidity;
         struct gpio_desc *desc;
@@ -33,7 +32,6 @@ struct driver_private_data
 {
         struct class *class_dht11;
         struct device *dev;
-        int count_of_devices;
 };
 
 static int dht11_probe(struct platform_device *);
@@ -41,14 +39,15 @@ static int dht11_remove(struct platform_device *);
 static int dht11_get_data(struct device *);
 
 struct driver_private_data dht11_driver_private_data;
+struct device_private_data dht11_device_private_data = { .temperature = 0, .humidity = 0 };
 
 /* Create device attributes */
 static ssize_t temperature_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
         int ret = 0;
-        struct device_private_data *dev_data = dev_get_drvdata(dev);
 
-        ret = sprintf(buf, "%d\n", dev_data->temperature);
+        dht11_get_data(dev);
+        ret = sprintf(buf, "%d\n", dht11_device_private_data.temperature);
 
         return ret;
 }
@@ -56,32 +55,20 @@ static ssize_t temperature_show(struct device *dev, struct device_attribute *att
 static ssize_t humidity_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
         int ret = 0;
-        struct device_private_data *dev_data = dev_get_drvdata(dev);
 
-        ret = sprintf(buf, "%d\n", dev_data->humidity);
-
-        return ret;
-}
-
-static ssize_t show_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        int ret = 0;
-        struct device_private_data *dev_data = dev_get_drvdata(dev);
-
-        ret = sprintf(buf, "%s\n", dev_data->label);
+        dht11_get_data(dev);
+        ret = sprintf(buf, "%d\n", dht11_device_private_data.humidity);
 
         return ret;
 }
 
 static DEVICE_ATTR_RO(temperature);
 static DEVICE_ATTR_RO(humidity);
-static DEVICE_ATTR_RO(show);
 
 static struct attribute *gpio_attrs[] = 
 {
         &dev_attr_temperature.attr,
         &dev_attr_humidity.attr,
-        &dev_attr_show.attr,
         NULL
 };
 
@@ -108,70 +95,31 @@ static struct platform_driver dht11_platform_driver =
         .probe = dht11_probe,
         .remove = dht11_remove,
         .driver = {
-            .name = "dht11",
-            .of_match_table = of_match_ptr(dht11_device_match)
+                .name = "dht11",
+                .of_match_table = of_match_ptr(dht11_device_match)
         }
 };
 
 
 static int dht11_probe(struct platform_device *pdev)
 {
-        const char *label;
-
         struct device *dev = &pdev->dev;
 
-        /* device private data */
-        struct device_private_data *device_data;
+        dev_set_drvdata(dev, &dht11_device_private_data);
 
-        /* Parent device node */
-        struct device_node *parent = pdev->dev.of_node;
-
-        /* Child device node */
-        struct device_node *child = NULL;
-
-        dht11_driver_private_data.count_of_devices = of_get_child_count(parent);
-        if(!dht11_driver_private_data.count_of_devices){
-                dev_err(dev, "No devices found\n");
+        /* Checking for the existence of a configuration for the pin */
+        dht11_device_private_data.desc = gpiod_get(dev, "data", GPIOD_OUT_LOW);
+        if(IS_ERR(dht11_device_private_data.desc)){
+                dev_err(dev, "GPIO error\n");
                 return -EINVAL;
         }
 
-        dev_info(dev, "Total devices found = %d\n", dht11_driver_private_data.count_of_devices);
-
-
-        dht11_driver_private_data.dev = devm_kzalloc(dev, sizeof(struct device *) * \
-                    dht11_driver_private_data.count_of_devices, GFP_KERNEL);
-
-        for_each_available_child_of_node(parent, child){
-                /* Allocate memory for device private data */
-                device_data = devm_kzalloc(dev, sizeof(*device_data), GFP_KERNEL);
-                if(!device_data){
-                        dev_err(dev, "Cannot allocate memory\n");
-                        return -ENOMEM;
-                }
-
-                /* Fill with data device private data structer from device tree node */
-                if(of_property_read_string(child, "label", &label)){
-                        dev_warn(dev, "Missing lable information \n");
-                        return -ENOMEM;
-                }else{
-                        strcpy(device_data->label, label);
-                        dev_info(dev, "GPIO label = %s\n", device_data->label);
-                }
-
-                /* Checking for the existence of a configuration for the pin */
-                device_data->desc = gpiod_get(dev, "bone", GPIOD_OUT_LOW);
-                if(IS_ERR(device_data->desc)){
-                        dev_err(dev, "GPIO error\n");
-                        return -EINVAL;
-                }
-
-                /* Create devices under /sys/class/dht11 */
-                dht11_driver_private_data.dev = device_create_with_groups(dht11_driver_private_data.class_dht11, \
-                                        dev, 0, device_data, gpio_dht11_attr_groups, device_data->label);
-                if(IS_ERR(dht11_driver_private_data.dev)){
-                        dev_err(dev, "Error in device_create \n");
-                        return PTR_ERR(dht11_driver_private_data.dev);
-                }
+        /* Create devices under /sys/class/dht11 */
+        dht11_driver_private_data.dev = device_create_with_groups(dht11_driver_private_data.class_dht11, \
+                                dev, 0, &dht11_device_private_data, gpio_dht11_attr_groups, "DHT11");
+        if(IS_ERR(dht11_driver_private_data.dev)){
+                dev_err(dev, "Error in device_create \n");
+                return PTR_ERR(dht11_driver_private_data.dev);
         }
 
         dht11_get_data(dev);
