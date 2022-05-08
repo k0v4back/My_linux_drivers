@@ -4,7 +4,7 @@ GENERAT = *.o app
 
 all: app	
 
-main: test.o aht10.o dht11.o led.o ssd1306.o
+app: main.o aht10.o dht11.o led.o ssd1306.o
 		$(CROSS_COMPILE)gcc $^ -o $@
 
 %.o: %.c
