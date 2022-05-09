@@ -2,12 +2,16 @@
 #include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/sysfs.h>
+#include <linux/string.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/device.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int ssd1306_remove(struct i2c_client *client);
 static int i2c_write(unsigned char *buf, unsigned int len);
-static int i2c_read(unsigned char *buf, unsigned int len);
-static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 static int ssd1306_display_init(void);
 static void ssd1306_write(bool is_cmd, unsigned char data);
@@ -141,6 +145,70 @@ static struct device_private_data {
         struct platform_device_data pdata;
 };
 
+/*
+ * Device attribute functions
+ */
+static ssize_t name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        pr_info("It is name_show\n");
+        return 0;
+}
+
+static ssize_t message_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        ssd1306_set_cursor(ssd1306_cursor_pos, ssd1306_line_num);  
+        ssd1306_string((unsigned char *)buf);
+
+        return count;
+}
+
+static ssize_t ssd1306_cursor_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        int ret = 0;
+
+        ret = sprintf(buf, "%d\n", ssd1306_cursor_pos);
+
+        return ret;
+}
+
+static ssize_t ssd1306_cursor_pos_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        int ret = 0;
+        long value;
+
+        ret = kstrtol(buf, 0, &value);
+        if(ret)
+                return ret; 
+
+        ssd1306_cursor_pos = value;
+
+        return count;
+}
+
+static ssize_t ssd1306_line_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        int ret = 0;
+
+        ret = sprintf(buf, "%d\n", ssd1306_line_num);
+
+        return ret;
+}
+
+static ssize_t ssd1306_line_num_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        int ret = 0;
+        long value;
+
+        ret = kstrtol(buf, 0, &value);
+        if(ret)
+                return ret; 
+
+        ssd1306_line_num = value;
+
+        return count;
+}
+
+
 static struct of_device_id ssd1306_of_match[] = {
         {
                 .compatible = "ssd1306",
@@ -170,11 +238,17 @@ static struct i2c_driver ssd1306 = {
 /*
  *  Variables of struct device_attribute
  */
-static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
+static DEVICE_ATTR_RO(name);
+static DEVICE_ATTR_WO(message);
+static DEVICE_ATTR_RW(ssd1306_cursor_pos);
+static DEVICE_ATTR_RW(ssd1306_line_num);
 
 static struct attribute *ssd1306_attrs[] = 
 {
         &dev_attr_name.attr,
+        &dev_attr_message.attr,
+        &dev_attr_ssd1306_cursor_pos.attr,
+        &dev_attr_ssd1306_line_num.attr,
         NULL
 };
 
@@ -183,15 +257,6 @@ static struct attribute_group ssd1306_attrs_group =
         .attrs = ssd1306_attrs
 };
 
-
-/*
- * Device attribute functions
- */
-static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        pr_info("It is show_name\n");
-        return 0;
-}
 
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
@@ -375,7 +440,6 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
         int ret;
-        u32 temp;
         
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(client);
@@ -430,18 +494,9 @@ static int ssd1306_remove(struct i2c_client *client)
 }
 
 
-/* File operation functions */ 
-
 static int i2c_write(unsigned char *buf, unsigned int len)
 {
     int ret = i2c_master_send(i2c_client_global, buf, len);
-
-    return ret;
-}
-
-static int i2c_read(unsigned char *buf, unsigned int len)
-{
-    int ret = i2c_master_recv(i2c_client_global, buf, len);
 
     return ret;
 }
