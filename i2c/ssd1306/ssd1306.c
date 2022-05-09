@@ -21,15 +21,11 @@ static void ssd1306_print_char(unsigned char c);
 static void ssd1306_fill(unsigned char data);
 static void ssd1306_go_to_next_line(void);
 
-#define SSD1306_MAX_SEG         (        128 )              // Maximum segment
-#define SSD1306_MAX_LINE        (          7 )              // Maximum line
-#define SSD1306_DEF_FONT_SIZE   (          5 )              // Default font size
+#define SSD1306_MAX_SEG         (        128 )              
+#define SSD1306_MAX_LINE        (          7 )              
+#define SSD1306_DEF_FONT_SIZE   (          5 )             
 
-static uint8_t ssd1306_line_num   = 0;
-static uint8_t ssd1306_cursor_pos = 0;
-static uint8_t ssd1306_font_size  = SSD1306_DEF_FONT_SIZE;
-
-static struct i2c_client *i2c_client_global = NULL;  // I2C Cient Structure (In our case it is OLED)
+static struct i2c_client *i2c_client_global = NULL;
 
 static const unsigned char ssd1306_font[][SSD1306_DEF_FONT_SIZE]= 
 {
@@ -143,6 +139,15 @@ static struct platform_device_data {
 
 static struct device_private_data {
         struct platform_device_data pdata;
+        uint8_t line_num;
+        uint8_t cursor_pos;
+        uint8_t font_size;
+};
+
+static struct device_private_data device_data = { 
+        .line_num = 0, 
+        .cursor_pos = 0, 
+        .font_size = SSD1306_DEF_FONT_SIZE 
 };
 
 /*
@@ -156,22 +161,13 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr, char
 
 static ssize_t message_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-        ssd1306_set_cursor(ssd1306_cursor_pos, ssd1306_line_num);  
+        ssd1306_set_cursor(device_data.cursor_pos, device_data.line_num);  
         ssd1306_string((unsigned char *)buf);
 
         return count;
 }
 
-static ssize_t ssd1306_cursor_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        int ret = 0;
-
-        ret = sprintf(buf, "%d\n", ssd1306_cursor_pos);
-
-        return ret;
-}
-
-static ssize_t ssd1306_cursor_pos_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t command_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret = 0;
         long value;
@@ -180,21 +176,21 @@ static ssize_t ssd1306_cursor_pos_store(struct device *dev, struct device_attrib
         if(ret)
                 return ret; 
 
-        ssd1306_cursor_pos = value;
+        ssd1306_fill(value);
 
         return count;
 }
 
-static ssize_t ssd1306_line_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t cursor_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
         int ret = 0;
 
-        ret = sprintf(buf, "%d\n", ssd1306_line_num);
+        ret = sprintf(buf, "%d\n", device_data.cursor_pos);
 
         return ret;
 }
 
-static ssize_t ssd1306_line_num_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t cursor_pos_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret = 0;
         long value;
@@ -203,7 +199,30 @@ static ssize_t ssd1306_line_num_store(struct device *dev, struct device_attribut
         if(ret)
                 return ret; 
 
-        ssd1306_line_num = value;
+        device_data.cursor_pos = value;
+
+        return count;
+}
+
+static ssize_t line_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        int ret = 0;
+
+        ret = sprintf(buf, "%d\n", device_data.line_num);
+
+        return ret;
+}
+
+static ssize_t line_num_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+        int ret = 0;
+        long value;
+
+        ret = kstrtol(buf, 0, &value);
+        if(ret)
+                return ret; 
+
+        device_data.line_num = value;
 
         return count;
 }
@@ -240,15 +259,17 @@ static struct i2c_driver ssd1306 = {
  */
 static DEVICE_ATTR_RO(name);
 static DEVICE_ATTR_WO(message);
-static DEVICE_ATTR_RW(ssd1306_cursor_pos);
-static DEVICE_ATTR_RW(ssd1306_line_num);
+static DEVICE_ATTR_WO(command);
+static DEVICE_ATTR_RW(cursor_pos);
+static DEVICE_ATTR_RW(line_num);
 
 static struct attribute *ssd1306_attrs[] = 
 {
         &dev_attr_name.attr,
         &dev_attr_message.attr,
-        &dev_attr_ssd1306_cursor_pos.attr,
-        &dev_attr_ssd1306_line_num.attr,
+        &dev_attr_command.attr,
+        &dev_attr_cursor_pos.attr,
+        &dev_attr_line_num.attr,
         NULL
 };
 
@@ -304,7 +325,7 @@ static int ssd1306_display_init(void)
         ssd1306_write(true, 0x2E); // Deactivate scroll
         ssd1306_write(true, 0xAF); // Display ON in normal mode
 
-        //Clear the display
+        /* Clear the display */
         ssd1306_fill(0x00);
 
         return 0;
@@ -331,8 +352,8 @@ static void ssd1306_set_cursor( uint8_t lineNo, uint8_t cursorPos)
 {
         /* Move the Cursor to specified position only if it is in range */
         if((lineNo <= SSD1306_MAX_LINE) && (cursorPos < SSD1306_MAX_SEG)){
-                ssd1306_line_num   = lineNo;             // Save the specified line number
-                ssd1306_cursor_pos = cursorPos;          // Save the specified cursor position
+                device_data.line_num   = lineNo;             // Save the specified line number
+                device_data.cursor_pos = cursorPos;          // Save the specified cursor position
 
                 ssd1306_write(true, 0x21);              // cmd for the column start and end address
                 ssd1306_write(true, cursorPos);         // column start addr
@@ -357,10 +378,10 @@ static void ssd1306_print_char(unsigned char c)
         uint8_t temp = 0;
 
         /*
-        * If we character is greater than segment len or we got new line charcter
-        * then move the cursor to the new line
-        */ 
-        if(((ssd1306_cursor_pos + ssd1306_font_size) >= SSD1306_MAX_SEG) || (c == '\n')){
+         * If we character is greater than segment len or we got new line charcter
+         * then move the cursor to the new line
+         */ 
+        if(((device_data.cursor_pos + device_data.font_size) >= SSD1306_MAX_SEG) || (c == '\n')){
                 ssd1306_go_to_next_line();
         }
         
@@ -371,14 +392,14 @@ static void ssd1306_print_char(unsigned char c)
                         data_byte= ssd1306_font[c][temp]; // Get the data to be displayed from LookUptable
 
                         ssd1306_write(false, data_byte);  // write data to the OLED
-                        ssd1306_cursor_pos++;
+                        device_data.cursor_pos++;
 
                         temp++;
 
-                }while(temp < ssd1306_font_size);
+                }while(temp < device_data.font_size);
                 
                 ssd1306_write(false, 0x00);         //Display the data
-                ssd1306_cursor_pos++;
+                device_data.cursor_pos++;
         }
 }
 
@@ -387,7 +408,7 @@ static void ssd1306_fill(unsigned char data)
         unsigned int total  = 128 * 8;  // 8 pages x 128 segments x 8 bits of data
         unsigned int i      = 0;
 
-        //Fill the Display
+        /* Fill the Display */
         for(i = 0; i < total; i++){
                 ssd1306_write(false, data);
         }
@@ -399,14 +420,14 @@ static void  ssd1306_go_to_next_line( void )
          * Increment the current line number.
          * roll it back to first line, if it exceeds the limit. 
          */
-        ssd1306_line_num++;
-        ssd1306_line_num = (ssd1306_line_num & SSD1306_MAX_LINE);
+        device_data.line_num++;
+        device_data.line_num = (device_data.line_num & SSD1306_MAX_LINE);
 
-        ssd1306_set_cursor(ssd1306_line_num,0); /* Finally move it to next line */
+        ssd1306_set_cursor(device_data.line_num,0); /* Finally move it to next line */
 }
 
 
-/* Check device tree and get data*/
+/* Check device tree and get data */
 struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
 {
         struct device *dev = &client->dev;
@@ -423,9 +444,10 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
                 return ERR_PTR(-ENOMEM);
         }
 
-        /* Extract propertes of the device node using dev_node 
-         * and put into struct platform_device_data */
-
+        /*
+         * Extract propertes of the device node using dev_node 
+         * and put into struct platform_device_data 
+         */
         if(of_property_read_string(dev_node, "ssd1306,name", &pdata->name)){
                 dev_info(dev, "Missing name property \n");
                 return ERR_PTR(-EINVAL);
@@ -436,32 +458,24 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
 
 static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-        struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
         int ret;
         
-        /* Check device tree and get data*/
+        /* Check device tree and get data */
         pdata = get_platform_data_dt(client);
         if(IS_ERR(pdata))
                 return PTR_ERR(pdata);
-
-        /* Allocate memory for device */
-        dev_data = devm_kzalloc(&client->dev, sizeof(struct device_private_data), GFP_KERNEL);
-        if(dev_data == NULL){
-                dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
-                ret = -ENOMEM;
-        }
 
         /* Save i2c client */
         i2c_client_global = client;
 
         /* Save data from DT */
-        dev_data->pdata.name= pdata->name;
-        dev_info(dev, "Device name = %s\n", dev_data->pdata.name);
+        device_data.pdata.name = pdata->name;
+        dev_info(dev, "Device name = %s\n", device_data.pdata.name);
 
         /* Save the device private data pointer in platform device structure */
-        i2c_set_clientdata(i2c_client_global, dev_data);
+        i2c_set_clientdata(i2c_client_global, &device_data);
 
         dev = root_device_register("ssd1306");
         dev_set_drvdata(dev, i2c_client_global);
