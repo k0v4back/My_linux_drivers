@@ -1,15 +1,20 @@
 #ifndef _SSD1306_H
 #define _SSD1306_H
 
-#define SSD1306_DRIVER_NAME     "ssd1306"
-#define I2C_ADAPTER             "/dev/i2c-2"
+#define I2C_ADAPTER                 "/dev/i2c-2"
 
-enum SSD1306_CONSTS{
-    ERROR_SSD1306_INIT,
-    SUCCESS_SSD1306_INIT
-};
+#define SSD1306_COMMAND             "/sys/devices/ssd1306/command"
+#define SSD1306_CURSOR_POS          "/sys/devices/ssd1306/cursor_pos"
+#define SSD1306_LINE_NUM            "/sys/devices/ssd1306/line_num"
+#define SSD1306_MESSAGE             "/sys/devices/ssd1306/message"
+#define SSD1306_NAME                "/sys/devices/ssd1306/name"
 
-int check_init_ssd1306(void);
+void send_command(char *command, int lenght);
+void send_message(char *message, int lenght);
+void send_cursor_pos(int cursor_pos);
+void read_cursor_pos(void);
+void send_line_num(int line_num);
+void read_line_num(void);
 
 #endif  // _SSD1306_H
 
