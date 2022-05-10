@@ -19,6 +19,8 @@ void send_command(char *command, int lenght)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     write_num = write(fd, command, lenght);
@@ -30,6 +32,8 @@ void send_command(char *command, int lenght)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("write");
+        exit(EXIT_FAILURE);
     }
     close(fd);
 }
@@ -45,6 +49,8 @@ void send_message(char *message, int lenght)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     write_num = write(fd, message, lenght);
@@ -56,6 +62,8 @@ void send_message(char *message, int lenght)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("write");
+        exit(EXIT_FAILURE);
     }
     close(fd);
 }
@@ -66,6 +74,8 @@ void send_cursor_pos(int cursor_pos)
     ssize_t write_num;
     char str_cursor_pos[15];
 
+    ssd1306_data.cursor_pos = cursor_pos;
+
     sprintf(str_cursor_pos, "%d", cursor_pos);
     
     fd = open(SSD1306_CURSOR_POS, O_WRONLY | O_SYNC); 
@@ -74,6 +84,8 @@ void send_cursor_pos(int cursor_pos)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     write_num = write(fd, str_cursor_pos, 15);
@@ -85,6 +97,8 @@ void send_cursor_pos(int cursor_pos)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("write");
+        exit(EXIT_FAILURE);
     }
     close(fd);
 }
@@ -94,13 +108,16 @@ void read_cursor_pos(void)
     int fd;
     ssize_t read_num;
     char str_cursor_pos[15];
+    int cursor_pos;
 
-    fd = open(SSD1306_CURSOR_POS, O_WRONLY | O_SYNC); 
+    fd = open(SSD1306_CURSOR_POS, O_RDONLY | O_SYNC); 
     if(fd < 0){
         if(errno == ENOENT){
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     read_num = read(fd, str_cursor_pos, 15);
@@ -109,8 +126,13 @@ void read_cursor_pos(void)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("read");
+        exit(EXIT_FAILURE);
     }
     close(fd);
+
+    cursor_pos = atoi(str_cursor_pos);
+    ssd1306_data.read_cursor_pos = cursor_pos;
 }
 
 void send_line_num(int line_num)
@@ -118,6 +140,8 @@ void send_line_num(int line_num)
     int fd;
     ssize_t write_num;
     char str_line_num[15];
+
+    ssd1306_data.line_num = line_num;
 
     sprintf(str_line_num, "%d", line_num);
     
@@ -127,6 +151,8 @@ void send_line_num(int line_num)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     write_num = write(fd, str_line_num, 15);
@@ -138,6 +164,8 @@ void send_line_num(int line_num)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("write");
+        exit(EXIT_FAILURE);
     }
     close(fd);
 }
@@ -147,13 +175,16 @@ void read_line_num(void)
     int fd;
     ssize_t read_num;
     char str_line_num[15];
+    int line_num;
 
-    fd = open(SSD1306_LINE_NUM, O_WRONLY | O_SYNC); 
+    fd = open(SSD1306_LINE_NUM, O_RDONLY | O_SYNC); 
     if(fd < 0){
         if(errno == ENOENT){
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("open");
+        exit(EXIT_FAILURE);
     }
 
     read_num = read(fd, str_line_num, 15);
@@ -162,7 +193,12 @@ void read_line_num(void)
             /* Write to log file about problem */
             exit(EXIT_FAILURE);
         }
+        perror("read");
+        exit(EXIT_FAILURE);
     }
     close(fd);
+
+    line_num = atoi(str_line_num);
+    ssd1306_data.read_line_num = line_num;
 }
 

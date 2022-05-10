@@ -9,6 +9,15 @@
 #define SSD1306_MESSAGE             "/sys/devices/ssd1306/message"
 #define SSD1306_NAME                "/sys/devices/ssd1306/name"
 
+struct ssd1306_device_data {
+    int cursor_pos;
+    int line_num;
+
+    /* For debug */
+    int read_cursor_pos;
+    int read_line_num;
+} ssd1306_data;
+
 void send_command(char *command, int lenght);
 void send_message(char *message, int lenght);
 void send_cursor_pos(int cursor_pos);
