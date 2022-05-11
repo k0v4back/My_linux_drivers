@@ -1,8 +1,9 @@
 #include <stdio.h>
 
-#include "ssd1306.h"
 #include "common.h"
+#include "ssd1306.h"
 #include "dht11.h"
+#include "led.h"
 
 extern volatile _Bool flag;
 
@@ -35,6 +36,8 @@ int main(int argc, char **argv)
             read_line_num();
             read_dht11_temperature();
             read_dht11_humidity();
+
+            send_led1_value(LED_ENABLED);
 
             /* Debug info */
             /*
