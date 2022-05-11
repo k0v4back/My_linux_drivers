@@ -32,3 +32,42 @@ void reg_timer(void)
         exit(1);
     }
 }
+
+void open_errors_check(int fd)
+{
+    if(fd < 0){
+        if(errno == ENOENT){
+            /* Write to log file about problem */
+            exit(EXIT_FAILURE);
+        }
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void write_errors_check(int write_num)
+{
+    if(write_num < 0){
+        if(errno == EBADF){
+            /* Write to log file about problem */
+            exit(EXIT_FAILURE);
+        }else if(errno == EFAULT){
+            /* Write to log file about problem */
+            exit(EXIT_FAILURE);
+        }
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void read_errors_check(int read_num)
+{
+    if(read_num < 0){
+        if(errno == EINVAL){
+            /* Write to log file about problem */
+            exit(EXIT_FAILURE);
+        }
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+}

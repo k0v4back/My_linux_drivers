@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "dht11.h"
+#include "common.h"
 
 void read_dht11_temperature(void)
 {
@@ -16,28 +17,15 @@ void read_dht11_temperature(void)
     char read_temperature[SIZE_READ_BUFFER];
 
     fd = open(DHT11_TEMPERATURE, O_RDONLY | O_SYNC); 
-    if(fd < 0){
-        if(errno == ENOENT){
-            /* Write to log file about problem */
-            exit(EXIT_FAILURE);
-        }
-        perror("open");
-        exit(EXIT_FAILURE);
-    }
+    open_errors_check(fd);
 
     read_num = read(fd, read_temperature, SIZE_READ_BUFFER);
-    if(read_num < 0){
-        if(errno == EINVAL){
-            /* Write to log file about problem */
-            exit(EXIT_FAILURE);
-        }
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
-    close(fd);
+    read_errors_check(read_num);
 
     dht11_temperature = atoi(read_temperature);
     dht11_data.temperature = dht11_temperature;
+
+    close(fd);
 }
 
 void read_dht11_humidity(void)
@@ -48,26 +36,13 @@ void read_dht11_humidity(void)
     char read_humidity[SIZE_READ_BUFFER];
 
     fd = open(DHT11_HUMIDITY, O_RDONLY | O_SYNC); 
-    if(fd < 0){
-        if(errno == ENOENT){
-            /* Write to log file about problem */
-            exit(EXIT_FAILURE);
-        }
-        perror("open");
-        exit(EXIT_FAILURE);
-    }
+    open_errors_check(fd);
 
     read_num = read(fd, read_humidity, SIZE_READ_BUFFER);
-    if(read_num < 0){
-        if(errno == EINVAL){
-            /* Write to log file about problem */
-            exit(EXIT_FAILURE);
-        }
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
-    close(fd);
+    read_errors_check(read_num);
 
     dht11_humidity = atoi(read_humidity);
     dht11_data.humidity = dht11_humidity;
+
+    close(fd);
 }

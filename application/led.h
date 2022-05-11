@@ -18,6 +18,6 @@ enum LED_VALUE {
     LED_ENABLED,
 };
 
-void send_led1_value(int led_val);
+void send_led1_value(enum LED_VALUE led_val);
 
 #endif  // _LED_H

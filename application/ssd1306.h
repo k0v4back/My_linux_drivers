@@ -9,6 +9,8 @@
 #define SSD1306_MESSAGE             "/sys/devices/ssd1306/message"
 #define SSD1306_NAME                "/sys/devices/ssd1306/name"
 
+#define CHAR_BUF_SIZE 5
+
 struct ssd1306_device_data {
     int cursor_pos;
     int line_num;
