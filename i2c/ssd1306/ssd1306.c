@@ -15,7 +15,7 @@ static int i2c_write(unsigned char *buf, unsigned int len);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 static int ssd1306_display_init(void);
 static void ssd1306_write(bool is_cmd, unsigned char data);
-static void ssd1306_set_cursor( uint8_t lineNo, uint8_t cursorPos);
+static void ssd1306_set_cursor( uint8_t line_num, uint8_t cursor_pos);
 static void ssd1306_string(unsigned char *str);
 static void ssd1306_print_char(unsigned char c);
 static void ssd1306_fill(unsigned char data);
@@ -161,7 +161,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr, char
 
 static ssize_t message_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-        ssd1306_set_cursor(device_data.cursor_pos, device_data.line_num);  
+        ssd1306_set_cursor(device_data.line_num, device_data.cursor_pos);  
         ssd1306_string((unsigned char *)buf);
 
         return count;
@@ -336,8 +336,7 @@ static void ssd1306_write(bool is_cmd, unsigned char data)
         unsigned char buf[2] = {0};
         int ret;
 
-        if( is_cmd == true )
-        {
+        if(is_cmd == true){
                 buf[0] = 0x00;
         }else{
                 buf[0] = 0x40;
@@ -348,20 +347,20 @@ static void ssd1306_write(bool is_cmd, unsigned char data)
         ret = i2c_write(buf, 2);
 }
 
-static void ssd1306_set_cursor( uint8_t lineNo, uint8_t cursorPos)
+static void ssd1306_set_cursor(uint8_t line_num, uint8_t cursor_pos)
 {
         /* Move the Cursor to specified position only if it is in range */
-        if((lineNo <= SSD1306_MAX_LINE) && (cursorPos < SSD1306_MAX_SEG)){
-                device_data.line_num   = lineNo;             // Save the specified line number
-                device_data.cursor_pos = cursorPos;          // Save the specified cursor position
+        if((line_num <= SSD1306_MAX_LINE) && (cursor_pos < SSD1306_MAX_SEG)){
+                device_data.line_num   = line_num;              /* Save the specified line number */
+                device_data.cursor_pos = cursor_pos;            /* Save the specified cursor position */
 
-                ssd1306_write(true, 0x21);              // cmd for the column start and end address
-                ssd1306_write(true, cursorPos);         // column start addr
-                ssd1306_write(true, SSD1306_MAX_SEG-1); // column end addr
+                ssd1306_write(true, 0x21);                      /* cmd for the column start and end address */
+                ssd1306_write(true, device_data.cursor_pos);    /* column start addr */
+                ssd1306_write(true, SSD1306_MAX_SEG-1);         /* column end addr */
 
-                ssd1306_write(true, 0x22);              // cmd for the page start and end address
-                ssd1306_write(true, lineNo);            // page start addr
-                ssd1306_write(true, SSD1306_MAX_LINE);  // page end addr
+                ssd1306_write(true, 0x22);                      /* cmd for the page start and end address */
+                ssd1306_write(true, device_data.line_num);      /* page start addr */
+                ssd1306_write(true, SSD1306_MAX_LINE);          /* page end addr */
         }
 }
 
@@ -414,7 +413,7 @@ static void ssd1306_fill(unsigned char data)
         }
 }
 
-static void  ssd1306_go_to_next_line( void )
+static void ssd1306_go_to_next_line(void)
 {
         /*
          * Increment the current line number.
@@ -485,8 +484,10 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         }
 
         ssd1306_display_init();
+        /*
         ssd1306_set_cursor(3,25);  
         ssd1306_string("SSD1306 driver");
+        */
 
         dev_info(dev, "Probe function was successful\n");
 
