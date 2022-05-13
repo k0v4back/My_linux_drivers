@@ -27,10 +27,17 @@ int main(int argc, char **argv)
             sprintf(str_dht11_humidity, "%d", dht11_data.humidity);
 
             send_cursor_pos(5);
-            send_line_num(5);
+            send_line_num(0);
+            send_message("Temp", sizeof("Temp"));
+            send_cursor_pos(40);
+            send_line_num(0);
+            send_message("Humid", sizeof("Humid"));
+
+            send_cursor_pos(5);
+            send_line_num(3);
             send_message(str_dht11_temperature, sizeof(str_dht11_temperature));
-            send_line_num(1);
-            send_cursor_pos(1);
+            send_line_num(3);
+            send_cursor_pos(40);
             send_message(str_dht11_humidity, sizeof(str_dht11_humidity));
             read_cursor_pos();
             read_line_num();
