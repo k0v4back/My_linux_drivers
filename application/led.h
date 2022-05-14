@@ -2,9 +2,9 @@
 #define _LED_H
 
 #define LED1_VALUE      "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.21/value" 
-#define LED2_VALUE      "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.19/value" 
+#define LED2_VALUE      "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN27_gpio3.19/value" 
 #define LED1_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.21/direction" 
-#define LED2_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.19/direction" 
+#define LED2_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN27_gpio3.19/direction" 
 
 struct leds_device_data {
     _Bool led1_value;
@@ -18,6 +18,12 @@ enum LED_VALUE {
     LED_ENABLED,
 };
 
-void send_led1_value(enum LED_VALUE led_val);
+enum LEDS {
+    LED_1,
+    LED_2,
+};
+
+void send_led_value(enum LEDS led, enum LED_VALUE led_val);
+void led_toggle(enum LEDS led);
 
 #endif  // _LED_H

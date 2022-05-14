@@ -46,7 +46,10 @@ int main(int argc, char **argv)
             read_dht11_temperature();
             read_dht11_humidity();
 
-            send_led1_value(LED_ENABLED);
+//            send_led_value(LED_1, LED_DISABLED);
+ //           send_led_value(LED_2, LED_ENABLED);
+            led_toggle(LED_1);
+
 
             /* Debug info */
             /*
