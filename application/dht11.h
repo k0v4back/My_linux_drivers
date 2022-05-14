@@ -3,8 +3,9 @@
 
 #define DHT11_TEMPERATURE       "/sys/class/dht11/DHT11/temperature"
 #define DHT11_HUMIDITY          "/sys/class/dht11/DHT11/humidity"
+#define DHT11_UPDATE            "/sys/class/dht11/DHT11/update"
 
-#define SIZE_READ_BUFFER 5 
+#define SIZE_READ_BUFFER        10 
 
 struct dht11_device_data {
     int temperature;
@@ -13,6 +14,7 @@ struct dht11_device_data {
 
 void read_dht11_temperature(void);
 void read_dht11_humidity(void);
+void read_dht11_update(void);
 
 #endif  // _DHT11_H
 

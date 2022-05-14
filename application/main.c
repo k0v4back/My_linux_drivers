@@ -41,6 +41,8 @@ int main(int argc, char **argv)
             send_message(str_dht11_humidity, sizeof(str_dht11_humidity));
             read_cursor_pos();
             read_line_num();
+
+            read_dht11_update();
             read_dht11_temperature();
             read_dht11_humidity();
 

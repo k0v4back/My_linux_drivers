@@ -9,6 +9,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/mutex.h>
 
 #define GPIO_HIGH   1
 #define GPIO_LOW    0
@@ -25,6 +26,7 @@ struct device_private_data
         int temperature;
         int humidity;
         struct gpio_desc *desc;
+        struct mutex dev_lock;
 };
 
 /* Driver private data structure */
@@ -44,31 +46,32 @@ struct device_private_data dht11_device_private_data = { .temperature = 0, .humi
 /* Create device attributes */
 static ssize_t temperature_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        int ret = 0;
-
-        dht11_get_data(dev);
-        ret = sprintf(buf, "%d\n", dht11_device_private_data.temperature);
-
-        return ret;
+        return sprintf(buf, "%d\n", dht11_device_private_data.temperature);
 }
 
 static ssize_t humidity_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        int ret = 0;
+        return sprintf(buf, "%d\n", dht11_device_private_data.humidity);
+}
 
+static ssize_t update_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        mutex_lock(&dht11_device_private_data.dev_lock);
         dht11_get_data(dev);
-        ret = sprintf(buf, "%d\n", dht11_device_private_data.humidity);
+        mutex_unlock(&dht11_device_private_data.dev_lock);
 
-        return ret;
+        return sprintf(buf, "%s\n", "SUCCESS");
 }
 
 static DEVICE_ATTR_RO(temperature);
 static DEVICE_ATTR_RO(humidity);
+static DEVICE_ATTR_RO(update);
 
 static struct attribute *gpio_attrs[] = 
 {
         &dev_attr_temperature.attr,
         &dev_attr_humidity.attr,
+        &dev_attr_update.attr,
         NULL
 };
 
@@ -106,6 +109,8 @@ static int dht11_probe(struct platform_device *pdev)
         struct device *dev = &pdev->dev;
 
         dev_set_drvdata(dev, &dht11_device_private_data);
+
+        mutex_init(&dht11_device_private_data.dev_lock);
 
         /* Checking for the existence of a configuration for the pin */
         dht11_device_private_data.desc = gpiod_get(dev, "data", GPIOD_OUT_LOW);

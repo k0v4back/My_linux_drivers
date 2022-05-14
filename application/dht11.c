@@ -46,3 +46,20 @@ void read_dht11_humidity(void)
 
     close(fd);
 }
+
+void read_dht11_update(void)
+{
+    int fd;
+    ssize_t read_num;
+    int dht11_humidity;
+    char read_humidity[SIZE_READ_BUFFER];
+
+    fd = open(DHT11_UPDATE, O_RDONLY | O_SYNC); 
+    open_errors_check(fd);
+
+    read_num = read(fd, read_humidity, SIZE_READ_BUFFER);
+    read_errors_check(read_num);
+
+    close(fd);
+}
+
