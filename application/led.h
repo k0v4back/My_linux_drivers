@@ -6,11 +6,13 @@
 #define LED1_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.21/direction" 
 #define LED2_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN27_gpio3.19/direction" 
 
+#define SIZE_READ_BUFFER        10 
+
 struct leds_device_data {
     _Bool led1_value;
     _Bool led2_value;
-    char led1_direction[5];
-    char led2_direction[5];
+    char led1_direction[SIZE_READ_BUFFER];
+    char led2_direction[SIZE_READ_BUFFER];
 } leds_data;
 
 enum LED_VALUE {

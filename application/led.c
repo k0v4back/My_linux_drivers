@@ -36,18 +36,26 @@ void led_toggle(enum LEDS led)
 
     if(led == LED_1){
         fd = open(LED1_VALUE, O_WRONLY | O_SYNC); 
-        if(leds_data.led1_value == LED_DISABLED)
+        if(leds_data.led1_value == LED_DISABLED){
             write_num = write(fd, "1", 2);
-        else if(leds_data.led1_value == LED_ENABLED)
+            leds_data.led1_value = 1;
+        }
+        else if(leds_data.led1_value == LED_ENABLED){
             write_num = write(fd, "0", 2);
+            leds_data.led1_value = 0;
+        }
         write_errors_check(write_num);
         close(fd);
     }else if(led == LED_2){
         fd = open(LED2_VALUE, O_WRONLY | O_SYNC); 
-        if(leds_data.led2_value == LED_DISABLED)
+        if(leds_data.led2_value == LED_DISABLED){
             write_num = write(fd, "1", 2);
-        else if(leds_data.led2_value == LED_ENABLED)
+            leds_data.led2_value = 1;
+        }
+        else if(leds_data.led2_value == LED_ENABLED){
             write_num = write(fd, "0", 2);
+            leds_data.led2_value = 0;
+        }
         write_errors_check(write_num);
         close(fd);
     }

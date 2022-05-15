@@ -13,11 +13,6 @@ int main(int argc, char **argv)
     reg_timer();
 
     send_command("0x00", sizeof("0x00"));
-    /*
-    send_cursor_pos(5);
-    send_line_num(5);
-    send_message("HELLO", sizeof("HELLO"));
-    */
     
     char str_dht11_temperature[10];
     char str_dht11_humidity[10];
@@ -44,8 +39,6 @@ int main(int argc, char **argv)
             send_line_num(4);
             send_cursor_pos(5);
             send_message(str_dht11_humidity, sizeof(str_dht11_humidity));
-            read_cursor_pos();
-            read_line_num();
 
             send_cursor_pos(70);
             send_line_num(2);
@@ -53,8 +46,6 @@ int main(int argc, char **argv)
             send_line_num(4);
             send_cursor_pos(70);
             send_message(str_aht10_humidity, sizeof(str_aht10_humidity));
-            read_cursor_pos();
-            read_line_num();
 
             read_dht11_update();
             read_dht11_temperature();
@@ -64,8 +55,9 @@ int main(int argc, char **argv)
             read_aht10_humidity();
 
 //            send_led_value(LED_1, LED_DISABLED);
-           send_led_value(LED_2, LED_ENABLED);
-//            led_toggle(LED_1);
+//           send_led_value(LED_2, LED_ENABLED);
+            led_toggle(LED_1);
+            led_toggle(LED_2);
 
 
             /* Debug info */

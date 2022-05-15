@@ -14,18 +14,12 @@
 struct ssd1306_device_data {
     int cursor_pos;
     int line_num;
-
-    /* For debug */
-    int read_cursor_pos;
-    int read_line_num;
 } ssd1306_data;
 
 void send_command(char *command, int lenght);
 void send_message(char *message, int lenght);
 void send_cursor_pos(int cursor_pos);
-void read_cursor_pos(void);
 void send_line_num(int line_num);
-void read_line_num(void);
 
 #endif  // _SSD1306_H
 
