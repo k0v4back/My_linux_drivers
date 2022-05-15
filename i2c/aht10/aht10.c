@@ -98,9 +98,8 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char
         struct i2c_client *client = dev_get_drvdata(dev);
         
         aht10_get_data(client);
-        dev_info(dev, "%u\n", sensor_data.temperature);
-        
-        return 0;
+
+        return sprintf(buf, "%d\n", sensor_data.temperature);
 }
 
 static ssize_t show_humid(struct device *dev, struct device_attribute *attr, char *buf)
@@ -108,9 +107,8 @@ static ssize_t show_humid(struct device *dev, struct device_attribute *attr, cha
         struct i2c_client *client = dev_get_drvdata(dev);
         
         aht10_get_data(client);
-        dev_info(dev, "%u\n", sensor_data.humidity);
 
-        return 0;
+        return sprintf(buf, "%d\n", sensor_data.humidity);
 }
 
 static int platform_driver_sysfs_create_files(struct device *dev)
