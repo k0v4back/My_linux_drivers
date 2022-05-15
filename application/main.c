@@ -54,19 +54,12 @@ int main(int argc, char **argv)
             read_aht10_temperature();
             read_aht10_humidity();
 
-//            send_led_value(LED_1, LED_DISABLED);
-//           send_led_value(LED_2, LED_ENABLED);
+//          send_led_value(LED_1, LED_DISABLED);
+//          send_led_value(LED_2, LED_ENABLED);
             led_toggle(LED_1);
             led_toggle(LED_2);
 
-
-            /* Debug info */
-            /*
-            printf("cursor_pos = %d; line_num = %d\n",
-                ssd1306_data.cursor_pos, ssd1306_data.line_num);
-            printf("read_cursor_pos = %d; read_line_num = %d\n",
-                ssd1306_data.read_cursor_pos, ssd1306_data.read_line_num);
-                */
+            //log_file_write("For test");
 
             flag = 0;
         }
