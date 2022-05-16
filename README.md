@@ -5,7 +5,7 @@
   
   The drivers are written for BeagleBone Black, device tree (DT) files may not be suitable for your system.
   I use linux system calls to access the drivers and interact with them.
-  I get the temperature from the DHT11 and AHT10 sensors. Flashing LEDs indicate the operability of the system.
+  I get the temperature and humidity from the DHT11 and AHT10 sensors. Flashing LEDs indicate the operability of the system.
   And display all the information on the display.
   
 ###  Drivers that are included in the project:
