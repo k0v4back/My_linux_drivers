@@ -1,3 +1,8 @@
+/*
+ * ssd1306.c - Linux kernel modules for ssd1306 oled display.
+ * Get temperature and humidity.
+ */
+
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -9,7 +14,8 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 
-static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *id);
+static int ssd1306_probe(struct i2c_client *client, 
+        const struct i2c_device_id *id);
 static int ssd1306_remove(struct i2c_client *client);
 static int i2c_write(unsigned char *buf, unsigned int len);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
@@ -137,6 +143,7 @@ static struct platform_device_data {
         const char *name;
 };
 
+/* Keep information about ssd1306 oled display */
 static struct device_private_data {
         struct platform_device_data pdata;
         uint8_t line_num;
@@ -153,13 +160,16 @@ static struct device_private_data device_data = {
 /*
  * Device attribute functions
  */
-static ssize_t name_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t name_show(struct device *dev, 
+        struct device_attribute *attr, char *buf)
 {
         pr_info("It is name_show\n");
+
         return 0;
 }
 
-static ssize_t message_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t message_store(struct device *dev, struct device_attribute *attr,
+        const char *buf, size_t count)
 {
         ssd1306_set_cursor(device_data.line_num, device_data.cursor_pos);  
         ssd1306_string((unsigned char *)buf);
@@ -167,7 +177,8 @@ static ssize_t message_store(struct device *dev, struct device_attribute *attr, 
         return count;
 }
 
-static ssize_t command_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t command_store(struct device *dev, 
+        struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret = 0;
         long value;
@@ -181,7 +192,8 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr, 
         return count;
 }
 
-static ssize_t cursor_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t cursor_pos_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         int ret = 0;
 
@@ -190,7 +202,8 @@ static ssize_t cursor_pos_show(struct device *dev, struct device_attribute *attr
         return ret;
 }
 
-static ssize_t cursor_pos_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t cursor_pos_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret = 0;
         long value;
@@ -204,7 +217,8 @@ static ssize_t cursor_pos_store(struct device *dev, struct device_attribute *att
         return count;
 }
 
-static ssize_t line_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t line_num_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         int ret = 0;
 
@@ -213,7 +227,8 @@ static ssize_t line_num_show(struct device *dev, struct device_attribute *attr, 
         return ret;
 }
 
-static ssize_t line_num_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t line_num_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret = 0;
         long value;
@@ -384,27 +399,27 @@ static void ssd1306_print_char(unsigned char c)
                 ssd1306_go_to_next_line();
         }
         
-        // print charcters other than new line
+        /* print charcters other than new line */
         if( c != '\n' ){
-                c -= 0x20;  //or c -= ' ';
+                c -= 0x20;  /* or c -= ' '; */
                 do{
-                        data_byte= ssd1306_font[c][temp]; // Get the data to be displayed from LookUptable
+                        data_byte= ssd1306_font[c][temp]; /* Get the data to be displayed from LookUptable */
 
-                        ssd1306_write(false, data_byte);  // write data to the OLED
+                        ssd1306_write(false, data_byte);  /* write data to the OLED */
                         device_data.cursor_pos++;
 
                         temp++;
 
                 }while(temp < device_data.font_size);
                 
-                ssd1306_write(false, 0x00);         //Display the data
+                ssd1306_write(false, 0x00);         /* Display the data */
                 device_data.cursor_pos++;
         }
 }
 
 static void ssd1306_fill(unsigned char data)
 {
-        unsigned int total  = 128 * 8;  // 8 pages x 128 segments x 8 bits of data
+        unsigned int total  = 128 * 8;  /* 8 pages x 128 segments x 8 bits of data */
         unsigned int i      = 0;
 
         /* Fill the Display */
@@ -484,10 +499,6 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         }
 
         ssd1306_display_init();
-        /*
-        ssd1306_set_cursor(3,25);  
-        ssd1306_string("SSD1306 driver");
-        */
 
         dev_info(dev, "Probe function was successful\n");
 

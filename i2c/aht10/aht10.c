@@ -1,3 +1,8 @@
+/*
+ * aht10.c - Linux kernel modules for hardware monitoring.
+ * Get temperature and humidity.
+ */
+
 #include <linux/delay.h>
 #include <linux/hwmon.h>
 #include <linux/i2c.h>
@@ -9,11 +14,15 @@
 #define AHT10_COMAND_MEAS   0b10101100
 #define AHT10_COMAND_RESET  0b10111010
 
-static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id);
+static int aht10_probe(struct i2c_client *client,
+        const struct i2c_device_id *id);
 static int aht10_remove(struct i2c_client *client);
-static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf);
-static ssize_t show_humid(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_name(struct device *dev,
+        struct device_attribute *attr, char *buf);
+static ssize_t show_temp(struct device *dev,
+        struct device_attribute *attr, char *buf);
+static ssize_t show_humid(struct device *dev,
+        struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *pcd_dev);
 static int aht10_sensor_init(struct i2c_client *client);
 static void aht10_get_data(struct i2c_client *client);
@@ -23,6 +32,7 @@ static struct platform_device_data {
         const char *name;
 };
 
+/* Keep information about aht10 sensor data */
 static struct aht10_data {
         int temperature;
         int humidity;
@@ -70,7 +80,7 @@ static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 static DEVICE_ATTR(temp, S_IRUGO, show_temp, NULL);
 static DEVICE_ATTR(humid, S_IRUGO, show_humid, NULL);
 
-static struct attribute *aht10_attrs[] = 
+static struct attribute *aht10_attrs[] =
 {
         &dev_attr_name.attr,
         &dev_attr_temp.attr,
@@ -87,25 +97,29 @@ static struct attribute_group aht10_attrs_group =
 /*
  * Device attribute functions
  */
-static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_name(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         pr_info("It is show_name\n");
+
         return 0;
 }
 
-static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_temp(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         struct i2c_client *client = dev_get_drvdata(dev);
-        
+
         aht10_get_data(client);
 
         return sprintf(buf, "%d\n", sensor_data.temperature);
 }
 
-static ssize_t show_humid(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_humid(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         struct i2c_client *client = dev_get_drvdata(dev);
-        
+
         aht10_get_data(client);
 
         return sprintf(buf, "%d\n", sensor_data.humidity);
@@ -113,9 +127,7 @@ static ssize_t show_humid(struct device *dev, struct device_attribute *attr, cha
 
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
-        int ret;
-
-        ret = sysfs_create_group(&dev->kobj, &aht10_attrs_group);
+        int ret = sysfs_create_group(&dev->kobj, &aht10_attrs_group);
 
         return ret;
 }
@@ -156,10 +168,12 @@ static void aht10_get_data(struct i2c_client *client)
 
         ret = i2c_master_recv(client, raw_data, 6);
 
-        temp = ((u32)(raw_data[3] & 0x0Fu) << 16u) | ((u32)raw_data[4] << 8u) | raw_data[5];
+        temp = ((u32)(raw_data[3] & 0x0Fu) << 16u) |
+            ((u32)raw_data[4] << 8u) | raw_data[5];
         temp = temp * 200/1048576 - 50;
 
-        humid = ((u32)raw_data[1] << 12u) | ((u32)raw_data[2] << 4u) | (raw_data[3] >> 4u);
+        humid = ((u32)raw_data[1] << 12u) | ((u32)raw_data[2] << 4u) |
+            (raw_data[3] >> 4u);
         humid = humid * 100/1048576;
 
         sensor_data.temperature = temp;
@@ -169,7 +183,8 @@ static void aht10_get_data(struct i2c_client *client)
 /*
  * Check device tree and get data
  */
-static struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
+static struct platform_device_data * get_platform_data_dt(
+        struct i2c_client *client)
 {
         struct device *dev = &client->dev;
         struct device_node *dev_node = dev->of_node;
@@ -177,15 +192,16 @@ static struct platform_device_data * get_platform_data_dt(struct i2c_client *cli
 
         if(!dev_node)
                 return NULL;
-        
+
         /* Allocate memory for pdata */
-        pdata = devm_kzalloc(dev, sizeof(struct platform_device_data), GFP_KERNEL);
+        pdata = devm_kzalloc(dev, sizeof(struct platform_device_data),
+                GFP_KERNEL);
         if(!pdata){
                 dev_info(dev, "Cannot allocate memory for platform_device_data\n");
                 return ERR_PTR(-ENOMEM);
         }
 
-        /* Extract propertes of the device node using dev_node 
+        /* Extract propertes of the device node using dev_node
          * and put into struct platform_device_data */
 
         if(of_property_read_string(dev_node, "aht10,name", &pdata->name)){
@@ -196,20 +212,22 @@ static struct platform_device_data * get_platform_data_dt(struct i2c_client *cli
         return pdata;
 }
 
-static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int aht10_probe(struct i2c_client *client,
+        const struct i2c_device_id *id)
 {
         struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         struct platform_device_data *pdata;
         int ret;
-        
+
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(client);
         if(IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device */
-        dev_data = devm_kzalloc(&client->dev, sizeof(struct device_private_data), GFP_KERNEL);
+        dev_data = devm_kzalloc(&client->dev,
+                sizeof(struct device_private_data), GFP_KERNEL);
         if(dev_data == NULL){
                 dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
                 ret = -ENOMEM;
@@ -234,7 +252,7 @@ static int aht10_probe(struct i2c_client *client, const struct i2c_device_id *id
 
         ret = aht10_sensor_init(dev_data->client);
         dev_info(dev, "STATUS = %d\n", ret);
-        
+
         aht10_get_data(dev_data->client);
         dev_info(dev, "TEMP = %u\n", sensor_data.temperature);
         dev_info(dev, "HUMID = %u\n", sensor_data.humidity);
@@ -252,7 +270,7 @@ static int aht10_remove(struct i2c_client *client)
         sysfs_remove_group(&dev->kobj, &aht10_attrs_group);
 
 
-        dev_info(dev, "Remove Function is invoked...\n"); 
+        dev_info(dev, "Remove Function is invoked...\n");
 
         return 0;
 }
@@ -263,7 +281,8 @@ static int __init aht10_driver_init(void)
 
         ret = i2c_add_driver(&aht10);
         if(ret != 0){
-                pr_err("%s:driver registration failed i2c-slave, error=%d\n", __func__, ret);
+                pr_err("%s:driver registration failed \
+                        i2c-slave, error=%d\n", __func__, ret);
                 i2c_del_driver(&aht10);
                 return ret;
         }

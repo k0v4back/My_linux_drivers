@@ -1,3 +1,8 @@
+/*
+ * dht11.c - Linux kernel modules for hardware monitoring.
+ * Get temperature and humidity.
+ */
+
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/fs.h>
@@ -14,6 +19,7 @@
 #define GPIO_HIGH   1
 #define GPIO_LOW    0
 
+/* Responses when working with the DHT11 sensor */
 enum DHT11_RESPONSE {
         ERROR_DHT11_FIRST_INIT,
         ERROR_DHT11_SECOND_INIT,
@@ -41,20 +47,26 @@ static int dht11_remove(struct platform_device *);
 static int dht11_get_data(struct device *);
 
 struct driver_private_data dht11_driver_private_data;
-struct device_private_data dht11_device_private_data = { .temperature = 0, .humidity = 0 };
+struct device_private_data dht11_device_private_data = { 
+    .temperature = 0,
+    .humidity = 0
+};
 
 /* Create device attributes */
-static ssize_t temperature_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t temperature_show(struct device *dev, 
+        struct device_attribute *attr, char *buf)
 {
         return sprintf(buf, "%d\n", dht11_device_private_data.temperature);
 }
 
-static ssize_t humidity_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t humidity_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         return sprintf(buf, "%d\n", dht11_device_private_data.humidity);
 }
 
-static ssize_t update_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t update_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         mutex_lock(&dht11_device_private_data.dev_lock);
         dht11_get_data(dev);
@@ -120,8 +132,10 @@ static int dht11_probe(struct platform_device *pdev)
         }
 
         /* Create devices under /sys/class/dht11 */
-        dht11_driver_private_data.dev = device_create_with_groups(dht11_driver_private_data.class_dht11, \
-                                dev, 0, &dht11_device_private_data, gpio_dht11_attr_groups, "DHT11");
+        dht11_driver_private_data.dev = device_create_with_groups(
+                dht11_driver_private_data.class_dht11, dev, 0,
+                &dht11_device_private_data, gpio_dht11_attr_groups, "DHT11"
+            );
         if(IS_ERR(dht11_driver_private_data.dev)){
                 dev_err(dev, "Error in device_create \n");
                 return PTR_ERR(dht11_driver_private_data.dev);
@@ -169,7 +183,7 @@ static int dht11_init(struct device_private_data *device_data)
         if(gpiod_get_value(device_data->desc) == GPIO_LOW)
                 return ERROR_DHT11_SECOND_INIT;
 
-        /* Wait until the sensor starts transmitting data (pull the line to the ground) */
+        /* Wait until sensor starts transmitting (pull line to the ground) */
         while(gpiod_get_value(device_data->desc) == GPIO_HIGH){};
 
         return SUCCESS_DHT11_INIT;
@@ -191,7 +205,7 @@ static int dht11_read_byte(struct device_private_data *device_data)
                 if(gpiod_get_value(device_data->desc) == GPIO_HIGH){
                         byte |= (1 << i);
                         /* Wait until pull the line to ground */
-                        while(gpiod_get_value(device_data->desc) == GPIO_HIGH){};
+                        while(gpiod_get_value(device_data->desc) == GPIO_HIGH);
                 }
         }
 
@@ -231,7 +245,9 @@ static int __init dht11_sysfs_init(void)
 {
         int ret = 0;
 
-        dht11_driver_private_data.class_dht11 = class_create(THIS_MODULE, "dht11");
+        dht11_driver_private_data.class_dht11 = class_create(
+                THIS_MODULE, "dht11"
+            );
         if(IS_ERR(dht11_driver_private_data.class_dht11)){
             pr_err("Class creation failed\n");
             ret = PTR_ERR(dht11_driver_private_data.class_dht11);

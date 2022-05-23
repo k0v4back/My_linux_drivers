@@ -1,3 +1,7 @@
+/*
+ * gpio_irq.c - Interruption when the button is pressed.
+ */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
@@ -6,7 +10,9 @@
 unsigned int irq_number;
 unsigned int gpio_number = 65; /* GPIO2_1 = 32*2+1= 65 */
 
-static irq_handler_t gpio_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs) {
+static irq_handler_t gpio_irq_handler(
+        unsigned int irq, void *dev_id, struct pt_regs *regs)
+{
         pr_info("ISR was called!\n");
 
         return (irq_handler_t)IRQ_HANDLED;
@@ -30,13 +36,16 @@ static int __init gpio_irq_init(void)
         /* Setup the interrupt */
         irq_number = gpio_to_irq(gpio_number);
 
-        if(request_irq(irq_number, (irq_handler_t) gpio_irq_handler, IRQF_TRIGGER_RISING, "my_gpio_irq", NULL) != 0){
-                printk("Error!\nCan not request interrupt nr.: %d\n", irq_number);
+        if(request_irq(irq_number, (irq_handler_t)gpio_irq_handler, 
+                    IRQF_TRIGGER_RISING, "my_gpio_irq", NULL) != 0)
+        {
+                printk("Error!\nCan not request interrupt: %d\n", irq_number);
                 gpio_free(gpio_number);
                 return -EINVAL;
         }
 
         printk("GPIO 65 is mapped to IRQ Nr.: %d\n", irq_number);
+
         return 0;
 }
 

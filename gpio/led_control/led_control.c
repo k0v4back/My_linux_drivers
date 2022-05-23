@@ -1,3 +1,8 @@
+/*
+ * led_control.c - Linux kernel modules for LED control.
+ * LED on and off functions.
+ */
+
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/fs.h>
@@ -28,8 +33,8 @@ static struct driver_private_data
 static struct driver_private_data gpio_driver_private_data;
 
 /* Create device attributes */
-static ssize_t direction_show(struct device *dev, struct device_attribute *attr, \
-                        char *buf)
+static ssize_t direction_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         struct device_private_data *device_data = dev_get_drvdata(dev);
 
@@ -45,8 +50,8 @@ static ssize_t direction_show(struct device *dev, struct device_attribute *attr,
         return sprintf(buf, "%s\n", p_direction);
 }
 
-static ssize_t direction_store(struct device *dev, struct device_attribute *attr, \
-                        const char *buf, size_t count)
+static ssize_t direction_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
 {
         int ret;
         struct device_private_data *device_data = dev_get_drvdata(dev);
@@ -59,12 +64,10 @@ static ssize_t direction_store(struct device *dev, struct device_attribute *attr
             ret = -EINVAL;
 
         return ret ? : count;
-
-        return 0;
 }
 
-static ssize_t value_show(struct device *dev, struct device_attribute *attr, \
-                        char *buf)
+static ssize_t value_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         struct device_private_data *device_data = dev_get_drvdata(dev);
         int value = gpiod_get_value(device_data->desc);
@@ -72,8 +75,8 @@ static ssize_t value_show(struct device *dev, struct device_attribute *attr, \
         return sprintf(buf,"%d\n",value);
 }
 
-static ssize_t value_store(struct device *dev, struct device_attribute *attr, \
-                        const char *buf, size_t count)
+static ssize_t value_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
 {
         struct device_private_data *device_data = dev_get_drvdata(dev);
         int ret;
@@ -81,16 +84,17 @@ static ssize_t value_store(struct device *dev, struct device_attribute *attr, \
 
         ret = kstrtol(buf, 0, &value);
         if(ret)
-            return ret;    
+            return ret;
         gpiod_set_value(device_data->desc, value);
 
         return count;
 }
 
-static ssize_t label_show(struct device *dev, struct device_attribute *attr, \
-                        char *buf)
+static ssize_t label_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
 {
         struct device_private_data *device_data = dev_get_drvdata(dev);
+
         return sprintf(buf, "%s\n", device_data->label);
 }
 
@@ -98,7 +102,7 @@ static DEVICE_ATTR_RW(direction);
 static DEVICE_ATTR_RW(value);
 static DEVICE_ATTR_RO(label);
 
-static struct attribute *gpio_attrs[] = 
+static struct attribute *gpio_attrs[] =
 {
         &dev_attr_direction.attr,
         &dev_attr_value.attr,
@@ -111,19 +115,19 @@ static struct attribute_group gpio_attr_group =
         .attrs = gpio_attrs
 };
 
-static const struct attribute_group *gpio_attr_groups[] = 
+static const struct attribute_group *gpio_attr_groups[] =
 {
         &gpio_attr_group,
         NULL
 };
 
-static struct of_device_id gpio_device_match[] = 
+static struct of_device_id gpio_device_match[] =
 {
         {.compatible = "org,led_control"},
         {}
 };
 
-static struct platform_driver gpio_led_control_platform_driver = 
+static struct platform_driver gpio_led_control_platform_driver =
 {
         .probe = gpio_led_control_probe,
         .remove = gpio_led_control_remove,
@@ -155,10 +159,13 @@ static int gpio_led_control_probe(struct platform_device *pdev)
             return -EINVAL;
         }
 
-        dev_info(dev, "Total devices found = %d\n", gpio_driver_private_data.count_of_devices);
+        dev_info(dev, "Total devices found = %d\n",
+                gpio_driver_private_data.count_of_devices);
 
-        gpio_driver_private_data.dev = devm_kzalloc(dev, sizeof(struct device *) * \
-                gpio_driver_private_data.count_of_devices , GFP_KERNEL);
+        gpio_driver_private_data.dev = devm_kzalloc(dev,
+                sizeof(struct device) *
+                gpio_driver_private_data.count_of_devices,
+                GFP_KERNEL);
 
         for_each_available_child_of_node(parent, child)
         {
@@ -169,22 +176,24 @@ static int gpio_led_control_probe(struct platform_device *pdev)
                 return -ENOMEM;
             }
 
-            /* Fill with data device private data structer from device tree node */
+            /* Fill with data device private data structer from device tree */
             if(of_property_read_string(child, "label", &name)){
                 dev_warn(dev, "Missing lable information \n");
-                snprintf(device_data->label, sizeof(device_data->label), "%d", i);
+                snprintf(device_data->label,
+                        sizeof(device_data->label), "%d", i);
             }else{
                 strcpy(device_data->label, name);
                 dev_info(dev, "GPIO label = %s\n", device_data->label);
             }
 
             /* Get GPIO as a reference to GPIO descriptor */
-            device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child->fwnode, \
-                                                               GPIOD_ASIS, device_data->label);
+            device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone",
+                    &child->fwnode, GPIOD_ASIS, device_data->label);
             if(IS_ERR(device_data->desc)){
                 ret = PTR_ERR(device_data->desc); //Extract error
                 if(ret == -ENOENT)
-                    dev_err(dev,"No GPIO has been assigned to the requested function and/or index\n");
+                    dev_err(dev, "No GPIO has been assigned to \
+                            the requested function and/or index\n");
                 return ret;
             }
 
@@ -196,15 +205,16 @@ static int gpio_led_control_probe(struct platform_device *pdev)
             }
 
             /* Create devices under /sys/class/gpio_led_control */
-            gpio_driver_private_data.dev[i] = device_create_with_groups(gpio_driver_private_data.class_gpio, \
+            gpio_driver_private_data.dev[i] = device_create_with_groups(
+                    gpio_driver_private_data.class_gpio,
                     dev, 0, device_data, gpio_attr_groups, device_data->label);
             if(IS_ERR(gpio_driver_private_data.dev[i])){
                 dev_err(dev, "Error in device_create \n");
                 return PTR_ERR(gpio_driver_private_data.dev[i]);
             }
 
-            i++; 
-        } 
+            i++;
+        }
 
         return 0;
 }
@@ -212,7 +222,7 @@ static int gpio_led_control_probe(struct platform_device *pdev)
 static int gpio_led_control_remove(struct platform_device *pdev)
 {
         int i;
-        
+
         dev_info(&pdev->dev, "Remove called\n");
 
         for(i = 0; i < gpio_driver_private_data.count_of_devices; i++){
@@ -226,11 +236,12 @@ static int __init gpio_led_control_init(void)
 {
         int ret;
 
-        gpio_driver_private_data.class_gpio = class_create(THIS_MODULE, "gpio_led_control");
+        gpio_driver_private_data.class_gpio = class_create(THIS_MODULE,
+                "gpio_led_control");
         if(IS_ERR(gpio_driver_private_data.class_gpio)){
             pr_err("Class creation failed\n");
             ret = PTR_ERR(gpio_driver_private_data.class_gpio);
-            return ret; 
+            return ret;
         }
 
         platform_driver_register(&gpio_led_control_platform_driver);
