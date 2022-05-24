@@ -23,7 +23,8 @@ static ssize_t show_temp(struct device *dev,
         struct device_attribute *attr, char *buf);
 static ssize_t show_humid(struct device *dev,
         struct device_attribute *attr, char *buf);
-static int platform_driver_sysfs_create_files(struct device *pcd_dev);
+static int platform_driver_sysfs_create_files(struct device *dev);
+static void platform_driver_sysfs_remove_files(struct device *dev);
 static int aht10_sensor_init(struct i2c_client *client);
 static void aht10_get_data(struct i2c_client *client);
 
@@ -125,11 +126,17 @@ static ssize_t show_humid(struct device *dev,
         return sprintf(buf, "%d\n", sensor_data.humidity);
 }
 
+
+/* Add and remove sysfs group (files) */
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
-        int ret = sysfs_create_group(&dev->kobj, &aht10_attrs_group);
+        return sysfs_create_group(&dev->kobj, &aht10_attrs_group);
+}
 
-        return ret;
+static void platform_driver_sysfs_remove_files(struct device *dev)
+{
+        sysfs_remove_group(&dev->kobj, &aht10_attrs_group);
+        kobject_del(&dev->kobj);
 }
 
 
@@ -267,8 +274,9 @@ static int aht10_remove(struct i2c_client *client)
         struct device *dev = &client->dev;
 
         /* Delete existing sysfs group */
-        sysfs_remove_group(&dev->kobj, &aht10_attrs_group);
+        platform_driver_sysfs_remove_files(dev);
 
+        i2c_set_clientdata(client, NULL);
 
         dev_info(dev, "Remove Function is invoked...\n");
 
