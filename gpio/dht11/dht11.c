@@ -248,6 +248,7 @@ static int __init dht11_sysfs_init(void)
         dht11_driver_private_data.class_dht11 = class_create(
                 THIS_MODULE, "dht11"
             );
+
         if(IS_ERR(dht11_driver_private_data.class_dht11)){
             pr_err("Class creation failed\n");
             ret = PTR_ERR(dht11_driver_private_data.class_dht11);

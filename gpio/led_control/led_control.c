@@ -190,10 +190,9 @@ static int gpio_led_control_probe(struct platform_device *pdev)
             device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone",
                     &child->fwnode, GPIOD_ASIS, device_data->label);
             if(IS_ERR(device_data->desc)){
-                ret = PTR_ERR(device_data->desc); //Extract error
+                ret = PTR_ERR(device_data->desc); 
                 if(ret == -ENOENT)
-                    dev_err(dev, "No GPIO has been assigned to \
-                            the requested function and/or index\n");
+                    dev_err(dev, "No GPIO has been assigned to  the requested function and/or index\n");
                 return ret;
             }
 

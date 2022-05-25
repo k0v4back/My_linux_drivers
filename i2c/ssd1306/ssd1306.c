@@ -18,7 +18,8 @@ static int ssd1306_probe(struct i2c_client *client,
         const struct i2c_device_id *id);
 static int ssd1306_remove(struct i2c_client *client);
 static int i2c_write(unsigned char *buf, unsigned int len);
-static int platform_driver_sysfs_create_files(struct device *pcd_dev);
+static int platform_driver_sysfs_create_files(struct device *dev);
+static void platform_driver_sysfs_remove_files(struct device *dev);
 static int ssd1306_display_init(void);
 static void ssd1306_write(bool is_cmd, unsigned char data);
 static void ssd1306_set_cursor( uint8_t line_num, uint8_t cursor_pos);
@@ -294,13 +295,16 @@ static struct attribute_group ssd1306_attrs_group =
 };
 
 
+/* Add and remove sysfs group (files) */
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
-        int ret;
+        return sysfs_create_group(&dev->kobj, &ssd1306_attrs_group);
+}
 
-        ret = sysfs_create_group(&dev->kobj, &ssd1306_attrs_group);
-
-        return ret;
+static void platform_driver_sysfs_remove_files(struct device *dev)
+{
+        sysfs_remove_group(&dev->kobj, &ssd1306_attrs_group);
+        kobject_del(&dev->kobj);
 }
 
 /*
@@ -513,6 +517,11 @@ static int ssd1306_remove(struct i2c_client *client)
         ssd1306_set_cursor(0,0);
         ssd1306_fill(0x00);
         ssd1306_write(true, 0xAE);
+
+        /* Delete existing sysfs group */
+        platform_driver_sysfs_remove_files(dev);
+
+        i2c_set_clientdata(client, NULL);
 
         dev_info(dev, "Remove Function is invoked...\n"); 
 
