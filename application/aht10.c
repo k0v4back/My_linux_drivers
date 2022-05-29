@@ -17,10 +17,10 @@ void read_aht10_temperature(void)
     char read_temperature[SIZE_READ_BUFFER];
 
     fd = open(AHT10_TEMPERATURE, O_RDONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     read_num = read(fd, read_temperature, SIZE_READ_BUFFER);
-    read_errors_check(read_num);
+    read_errors_check(read_num, __func__);
 
     aht10_temperature = atoi(read_temperature);
     aht10_data.temperature = aht10_temperature;
@@ -36,10 +36,10 @@ void read_aht10_humidity(void)
     char read_humidity[SIZE_READ_BUFFER];
 
     fd = open(AHT10_HUMIDITY, O_RDONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     read_num = read(fd, read_humidity, SIZE_READ_BUFFER);
-    read_errors_check(read_num);
+    read_errors_check(read_num, __func__);
 
     aht10_humidity = atoi(read_humidity);
     aht10_data.humidity = aht10_humidity; 

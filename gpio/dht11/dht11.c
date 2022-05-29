@@ -45,6 +45,8 @@ struct driver_private_data
 static int dht11_probe(struct platform_device *);
 static int dht11_remove(struct platform_device *);
 static int dht11_get_data(struct device *);
+static int platform_driver_sysfs_create_files(struct device *dev);
+static void platform_driver_sysfs_remove_files(struct device *dev);
 
 struct driver_private_data dht11_driver_private_data;
 struct device_private_data dht11_device_private_data = { 
@@ -97,6 +99,18 @@ static const struct attribute_group *gpio_dht11_attr_groups[] =
         &gpio_dht11_attr_group,
         NULL
 };
+
+/* Add and remove sysfs group (files) */
+static int platform_driver_sysfs_create_files(struct device *dev)
+{
+        return sysfs_create_group(&dev->kobj, &gpio_dht11_attr_group);
+}
+
+static void platform_driver_sysfs_remove_files(struct device *dev)
+{
+        sysfs_remove_group(&dev->kobj, &gpio_dht11_attr_group);
+        kobject_del(&dev->kobj);
+}
 
 
 static struct of_device_id dht11_device_match[] = 
@@ -153,7 +167,9 @@ static int dht11_remove(struct platform_device *pdev)
         struct device *dev = &pdev->dev;
         
         /* Delete existing sysfs group */
-        sysfs_remove_group(&dev->kobj, &gpio_dht11_attr_group);
+        //sysfs_remove_group(&dev->kobj, &gpio_dht11_attr_group);
+        platform_driver_sysfs_remove_files(dev);
+
         dev_info(dev, "Remove called\n");
 
         return 0;

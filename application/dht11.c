@@ -17,10 +17,10 @@ void read_dht11_temperature(void)
     char read_temperature[SIZE_READ_BUFFER];
 
     fd = open(DHT11_TEMPERATURE, O_RDONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     read_num = read(fd, read_temperature, SIZE_READ_BUFFER);
-    read_errors_check(read_num);
+    read_errors_check(read_num, __func__);
 
     dht11_temperature = atoi(read_temperature);
     dht11_data.temperature = dht11_temperature;
@@ -36,10 +36,10 @@ void read_dht11_humidity(void)
     char read_humidity[SIZE_READ_BUFFER];
 
     fd = open(DHT11_HUMIDITY, O_RDONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     read_num = read(fd, read_humidity, SIZE_READ_BUFFER);
-    read_errors_check(read_num);
+    read_errors_check(read_num, __func__);
 
     dht11_humidity = atoi(read_humidity);
     dht11_data.humidity = dht11_humidity;
@@ -55,10 +55,10 @@ void read_dht11_update(void)
     char read_humidity[SIZE_READ_BUFFER];
 
     fd = open(DHT11_UPDATE, O_RDONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     read_num = read(fd, read_humidity, SIZE_READ_BUFFER);
-    read_errors_check(read_num);
+    read_errors_check(read_num, __func__);
 
     close(fd);
 }

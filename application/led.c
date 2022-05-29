@@ -18,13 +18,13 @@ void send_led_value(enum LEDS led, enum LED_VALUE led_val)
         fd = open(LED1_VALUE, O_WRONLY | O_SYNC); 
     else if(led == LED_2)
         fd = open(LED2_VALUE, O_WRONLY | O_SYNC); 
-    open_errors_check(fd);
+    open_errors_check(fd, __func__);
 
     if(led_val == LED_DISABLED)
         write_num = write(fd, "0", 2);
     else if(led_val == LED_ENABLED)
         write_num = write(fd, "1", 2);
-    write_errors_check(write_num);
+    write_errors_check(write_num, __func__);
 
     close(fd);
 }
@@ -44,7 +44,7 @@ void led_toggle(enum LEDS led)
             write_num = write(fd, "0", 2);
             leds_data.led1_value = 0;
         }
-        write_errors_check(write_num);
+        write_errors_check(write_num, __func__);
         close(fd);
     }else if(led == LED_2){
         fd = open(LED2_VALUE, O_WRONLY | O_SYNC); 
@@ -56,7 +56,7 @@ void led_toggle(enum LEDS led)
             write_num = write(fd, "0", 2);
             leds_data.led2_value = 0;
         }
-        write_errors_check(write_num);
+        write_errors_check(write_num, __func__);
         close(fd);
     }
 

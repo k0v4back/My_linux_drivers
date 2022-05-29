@@ -39,48 +39,58 @@ void reg_timer(void)
     }
 }
 
-void open_errors_check(int fd)
+void open_errors_check(int fd, const char *func_err)
 {
+    char err_msg[LOG_ERROR_MSG];
+
     if(fd < 0){
         if(errno == ENOENT){
             /* Write to log file about problem */
-            log_file_write("open() -> ENOENT error");
+            sprintf(err_msg, "open() -> ENOENT error (Error sourse -> %s)", func_err);
+            log_file_write(err_msg);
             exit(EXIT_FAILURE);
         }
-        perror("open");
-        log_file_write("open() -> Other error");
+        sprintf(err_msg, "open() -> Other error (Error sourse -> %s)", func_err);
+        log_file_write(err_msg);
         exit(EXIT_FAILURE);
     }
 }
 
-void write_errors_check(int write_num)
+void write_errors_check(int write_num, const char *func_err)
 {
+    char err_msg[LOG_ERROR_MSG];
+
     if(write_num < 0){
         if(errno == EBADF){
             /* Write to log file about problem */
-            log_file_write("write() -> EBADF error");
+            sprintf(err_msg, "write() -> ENOENT error (Error sourse -> %s)", func_err);
+            log_file_write(err_msg);
             exit(EXIT_FAILURE);
         }else if(errno == EFAULT){
             /* Write to log file about problem */
-            log_file_write("write() -> EFAULT error");
+            sprintf(err_msg, "write() -> EFAULT error (Error sourse -> %s)", func_err);
+            log_file_write(err_msg);
             exit(EXIT_FAILURE);
         }
-        perror("write");
-        log_file_write("write() -> Other error");
+        sprintf(err_msg, "write() -> Other error (Error sourse -> %s)", func_err);
+        log_file_write(err_msg);
         exit(EXIT_FAILURE);
     }
 }
 
-void read_errors_check(int read_num)
+void read_errors_check(int read_num, const char *func_err)
 {
+    char err_msg[LOG_ERROR_MSG];
+
     if(read_num < 0){
         if(errno == EINVAL){
             /* Write to log file about problem */
-            log_file_write("read() -> EINVAL error");
+            sprintf(err_msg, "read() -> EINVAL error (Error sourse -> %s)", func_err);
+            log_file_write(err_msg);
             exit(EXIT_FAILURE);
         }
-        perror("read");
-        log_file_write("read() -> Other error");
+        sprintf(err_msg, "read() -> Other error (Error sourse -> %s)", func_err);
+        log_file_write(err_msg);
         exit(EXIT_FAILURE);
     }
 }
