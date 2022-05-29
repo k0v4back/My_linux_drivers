@@ -7,10 +7,12 @@
 #include "aht10.h"
 
 extern volatile _Bool flag;
+extern volatile unsigned int button_push;
 
 int main(int argc, char **argv)
 {
     reg_timer();
+    button_signal();
 
     send_command("0x00", sizeof("0x00"));
     
@@ -18,6 +20,9 @@ int main(int argc, char **argv)
     char str_dht11_humidity[10];
     char str_aht10_temperature[10];
     char str_aht10_humidity[10];
+    char str_button_push[10];
+
+    printf("%d\n", button_push);
 
     while(1){
         if(flag == 1){
@@ -25,6 +30,7 @@ int main(int argc, char **argv)
             sprintf(str_dht11_humidity, "%d%%", dht11_data.humidity);
             sprintf(str_aht10_temperature, "%dC", aht10_data.temperature);
             sprintf(str_aht10_humidity, "%d%%", aht10_data.humidity);
+            sprintf(str_button_push, "%d", button_push);
 
             send_cursor_pos(5);
             send_line_num(0);
@@ -46,6 +52,10 @@ int main(int argc, char **argv)
             send_line_num(4);
             send_cursor_pos(70);
             send_message(str_aht10_humidity, sizeof(str_aht10_humidity));
+
+            send_line_num(6);
+            send_cursor_pos(35);
+            send_message(str_button_push, sizeof(str_button_push));
 
             read_dht11_update();
             read_dht11_temperature();

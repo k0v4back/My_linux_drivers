@@ -6,6 +6,12 @@
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/sched/signal.h>
+
+#define SIG_PUSH_BUTTON 44
+
+/* Store information about user-space application */
+static struct task_struct *task = NULL;
 
 unsigned int irq_number;
 unsigned int gpio_number = 65; /* GPIO2_1 = 32*2+1= 65 */
@@ -13,7 +19,20 @@ unsigned int gpio_number = 65; /* GPIO2_1 = 32*2+1= 65 */
 static irq_handler_t gpio_irq_handler(
         unsigned int irq, void *dev_id, struct pt_regs *regs)
 {
+        struct siginfo info;
+
         pr_info("ISR was called!\n");
+
+        if(task != NULL) {
+                memset(&info, 0, sizeof(info));
+                info.si_signo = SIG_PUSH_BUTTON;
+                info.si_code = SI_QUEUE;
+
+                /* Send the signal */
+                if(send_sig_info(SIG_PUSH_BUTTON, 
+                            (struct kernel_siginfo *) &info, task) < 0) 
+                        printk("gpio_irq_signal: Error sending signal\n");
+        }
 
         return (irq_handler_t)IRQ_HANDLED;
 }

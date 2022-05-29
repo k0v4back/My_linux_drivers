@@ -12,6 +12,7 @@
 #include "common.h"
 
 volatile _Bool flag = 0;
+volatile unsigned int button_push = 0;
 
 void sig_handler(int signal)
 {
@@ -37,6 +38,25 @@ void reg_timer(void)
         log_file_write("setitimer() -> Error calling setitimer()");
         exit(1);
     }
+}
+
+void button_signal_handler(int sig)
+{
+    button_push++;
+    printf("%d\n", button_push);
+}
+
+void button_signal(void)
+{
+    int fd;
+
+    signal(44, button_signal_handler);
+
+    //printf("PID: %d\n", getpid());
+
+    /* Open the device file */
+    //fd = open("/dev/irq_signal", O_RDONLY);
+    //open_errors_check(fd, __func__);
 }
 
 void open_errors_check(int fd, const char *func_err)

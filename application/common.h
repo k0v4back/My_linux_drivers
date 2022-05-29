@@ -10,6 +10,9 @@
 void sig_handler(int signal);
 void reg_timer(void);
 
+void button_signal_handler(int sig);
+void button_signal(void);
+
 /* Helper functions */
 void open_errors_check(int fd, const char *func_err);
 void write_errors_check(int write_num, const char *func_err);
