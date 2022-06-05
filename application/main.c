@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     char str_aht10_humidity[10];
     char str_button_push[10];
 
-    printf("%d\n", button_push);
+    button_signal_reg();
 
     while(1){
         if(flag == 1){
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
             send_message(str_aht10_humidity, sizeof(str_aht10_humidity));
 
             send_line_num(6);
-            send_cursor_pos(35);
+            send_cursor_pos(40);
             send_message(str_button_push, sizeof(str_button_push));
 
             read_dht11_update();
@@ -68,8 +68,6 @@ int main(int argc, char **argv)
 //          send_led_value(LED_2, LED_ENABLED);
             led_toggle(LED_1);
             led_toggle(LED_2);
-
-            //log_file_write("For test");
 
             flag = 0;
         }

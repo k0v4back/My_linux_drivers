@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/ioctl.h>
 
 #include "common.h"
 
@@ -43,20 +44,27 @@ void reg_timer(void)
 void button_signal_handler(int sig)
 {
     button_push++;
-    printf("%d\n", button_push);
+    //printf("%d\n", button_push);
 }
 
 void button_signal(void)
 {
     int fd;
 
-    signal(44, button_signal_handler);
+    signal(SIG_PUSH_BUTTON, button_signal_handler);
+}
 
-    //printf("PID: %d\n", getpid());
+void button_signal_reg(void)
+{
+    int fd;
 
-    /* Open the device file */
-    //fd = open("/dev/irq_signal", O_RDONLY);
-    //open_errors_check(fd, __func__);
+    fd = open("/dev/gpio_irq_signal", O_RDONLY);
+    open_errors_check(fd, __func__);
+
+    if(ioctl(fd, REGISTER_UAPP, NULL)){
+        perror("Error registering app");
+        close(fd);
+    }
 }
 
 void open_errors_check(int fd, const char *func_err)
