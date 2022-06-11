@@ -1,0 +1,7 @@
+&i2c2 {
+    at24c64: at24c64@50 {
+        compatible = "at24c64"; 
+        at24c64,name = "at24c64 eeprom driver";
+        reg = <0x50>;
+    };
+};
