@@ -10,6 +10,9 @@
 #include <linux/module.h>
 #include <linux/sysfs.h>
 
+#define AT24C64_WRITE       0b10100000      /* Write to eeprom */
+#define AT24C64_READ        0b10100001      /* Read from eeprom */
+
 static int at24c64_probe(struct i2c_client *client,
         const struct i2c_device_id *id);
 static int at24c64_remove(struct i2c_client *client);
@@ -17,6 +20,10 @@ static ssize_t show_name(struct device *dev,
         struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *dev);
 static void platform_driver_sysfs_remove_files(struct device *dev);
+static int at24c64_write_byte(struct i2c_client *client,
+        const u16 addr, const u8 byte);
+static int at24c64_read_byte(struct i2c_client *client,
+        const u16 addr, u8 * const byte);
 
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
@@ -86,7 +93,9 @@ static ssize_t show_name(struct device *dev,
 }
 
 
-/* Add and remove sysfs group (files) */
+/* 
+ * Add and remove sysfs group (files) 
+ */
 static int platform_driver_sysfs_create_files(struct device *dev)
 {
         return sysfs_create_group(&dev->kobj, &at24c64_attrs_group);
@@ -96,6 +105,53 @@ static void platform_driver_sysfs_remove_files(struct device *dev)
 {
         sysfs_remove_group(&dev->kobj, &at24c64_attrs_group);
         kobject_del(&dev->kobj);
+}
+
+/*
+ * Functions for talking with eeprom
+ */
+static int at24c64_write_byte(struct i2c_client *client,
+        const u16 addr, const u8 byte)
+{
+        int ret;
+
+        /* Start byte for writing */
+        ret = i2c_master_send(client, (const u8 *)AT24C64_WRITE, 1);
+        if(ret != 0) return ret;
+
+        /* First word eeprom address */
+        ret = i2c_master_send(client, addr >> 8, 1);
+        if(ret != 0) return ret;
+
+        /* Second word eeprom address */
+        ret = i2c_master_send(client, addr, 1);
+        if(ret != 0) return ret;
+
+        /* Send byte to eeprom memory */
+        ret = i2c_master_send(client, byte, 1);
+        if(ret != 0) return ret;
+}
+
+static int at24c64_read_byte(struct i2c_client *client,
+        const u16 addr, u8 * const byte)
+{
+        int ret;
+
+        /* Start byte for reading */
+        ret = i2c_master_send(client, (const u8 *)AT24C64_READ, 1);
+        if(ret != 0) return ret;
+
+        /* First word eeprom address */
+        ret = i2c_master_send(client, addr >> 8, 1);
+        if(ret != 0) return ret;
+
+        /* Second word eeprom address */
+        ret = i2c_master_send(client, addr, 1);
+        if(ret != 0) return ret;
+
+        /* Read byte from eeprom memory */
+        ret = i2c_master_recv(client, byte, 1);
+        if(ret != 0) return ret;
 }
 
 
