@@ -1,6 +1,6 @@
 /*
- * at24c64.c - Linux kernel modules for hardware monitoring.
- * Get temperature and humidity.
+ * at24c64.c - Linux kernel module to store 64K(64Kb = 8KiB) of data.
+ * Get and write data.
  */
 
 #include <linux/delay.h>
@@ -21,7 +21,7 @@ static ssize_t show_name(struct device *dev,
 static int platform_driver_sysfs_create_files(struct device *dev);
 static void platform_driver_sysfs_remove_files(struct device *dev);
 static int at24c64_write_byte(struct i2c_client *client,
-        const u16 addr, const u8 byte);
+        const u16 addr, u8 * const byte);
 static int at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
 
@@ -111,12 +111,13 @@ static void platform_driver_sysfs_remove_files(struct device *dev)
  * Functions for talking with eeprom
  */
 static int at24c64_write_byte(struct i2c_client *client,
-        const u16 addr, const u8 byte)
+        const u16 addr, u8 * const byte)
 {
         int ret;
+        const u8 command[] = {AT24C64_WRITE};
 
         /* Start byte for writing */
-        ret = i2c_master_send(client, (const u8 *)AT24C64_WRITE, 1);
+        ret = i2c_master_send(client, command, 1);
         if(ret != 0) return ret;
 
         /* First word eeprom address */
@@ -130,15 +131,18 @@ static int at24c64_write_byte(struct i2c_client *client,
         /* Send byte to eeprom memory */
         ret = i2c_master_send(client, byte, 1);
         if(ret != 0) return ret;
+
+        return ret;
 }
 
 static int at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
         int ret;
+        const u8 command[] = {AT24C64_READ};
 
         /* Start byte for reading */
-        ret = i2c_master_send(client, (const u8 *)AT24C64_READ, 1);
+        ret = i2c_master_send(client, command, 1);
         if(ret != 0) return ret;
 
         /* First word eeprom address */
@@ -152,6 +156,8 @@ static int at24c64_read_byte(struct i2c_client *client,
         /* Read byte from eeprom memory */
         ret = i2c_master_recv(client, byte, 1);
         if(ret != 0) return ret;
+
+        return ret;
 }
 
 
@@ -193,6 +199,8 @@ static int at24c64_probe(struct i2c_client *client,
         struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         int ret;
+        u8 write_byte = 0x22;
+        u8 get_byte = 0;
 
         /* Allocate memory for device */
         dev_data = devm_kzalloc(&client->dev,
@@ -219,6 +227,11 @@ static int at24c64_probe(struct i2c_client *client,
         if(ret){
                 pr_info("sysfs_create_group failure.\n");
         }
+
+        ret = at24c64_write_byte(client, 0x00f8, &write_byte);  
+        ret = at24c64_read_byte(client, 0x00f8, &get_byte);
+
+        dev_info(dev, "Read data by 0x00f8 = %x\n", get_byte);
 
         dev_info(dev, "Probe function was successful\n");
 
