@@ -25,6 +25,9 @@ static int at24c64_write_byte(struct i2c_client *client,
 static int at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
 
+u8 write_byte = 0x22;
+u8 get_byte = 0;
+
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
         const char *name;
@@ -113,49 +116,41 @@ static void platform_driver_sysfs_remove_files(struct device *dev)
 static int at24c64_write_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
-        int ret;
-        const u8 command[] = {AT24C64_WRITE};
+        int ret = 0;
+        u8 status = 0;
+        const u8 command[] = {addr >> 8, addr, 0x22};
 
-        /* Start byte for writing */
-        ret = i2c_master_send(client, command, 1);
-        if(ret != 0) return ret;
+        /* Start byte by address */
+        ret = i2c_master_send(client, command, 3);
+        if(ret != 0) 
+                return ret;
 
-        /* First word eeprom address */
-        ret = i2c_master_send(client, addr >> 8, 1);
-        if(ret != 0) return ret;
+        usleep_range(350000, 350000 + 100000);
 
-        /* Second word eeprom address */
-        ret = i2c_master_send(client, addr, 1);
-        if(ret != 0) return ret;
+        ret = i2c_master_recv(client, &status, 1);
+        if(ret != 1)
+                return -ENODATA;
 
-        /* Send byte to eeprom memory */
-        ret = i2c_master_send(client, byte, 1);
-        if(ret != 0) return ret;
-
-        return ret;
+        return status;
 }
 
 static int at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
         int ret;
-        const u8 command[] = {AT24C64_READ};
+        const u8 command[] = {addr >> 8, addr};
 
         /* Start byte for reading */
         ret = i2c_master_send(client, command, 1);
-        if(ret != 0) return ret;
+        if(ret != 0) 
+                return ret;
 
-        /* First word eeprom address */
-        ret = i2c_master_send(client, addr >> 8, 1);
-        if(ret != 0) return ret;
-
-        /* Second word eeprom address */
-        ret = i2c_master_send(client, addr, 1);
-        if(ret != 0) return ret;
+        usleep_range(350000, 350000 + 100000);
 
         /* Read byte from eeprom memory */
         ret = i2c_master_recv(client, byte, 1);
-        if(ret != 0) return ret;
+        if(ret != 0) 
+                return ret;
 
         return ret;
 }
@@ -199,8 +194,6 @@ static int at24c64_probe(struct i2c_client *client,
         struct device_private_data *dev_data;
         struct device *dev = &client->dev;
         int ret;
-        u8 write_byte = 0x22;
-        u8 get_byte = 0;
 
         /* Allocate memory for device */
         dev_data = devm_kzalloc(&client->dev,
@@ -216,13 +209,13 @@ static int at24c64_probe(struct i2c_client *client,
         /* Save i2c client */
         dev_data->client = client;
 
-        dev_info(dev, "Device name = %s\n", dev_data->pdata->name);
-
-        /* Save the device private data pointer in platform device structure */
+        /* Save the device private data pointer to device structure */
         i2c_set_clientdata(client, dev_data);
 
+        dev_info(dev, "Device name = %s\n", dev_data->pdata->name);
+
         dev = root_device_register("at24c64");
-        dev_set_drvdata(dev, dev_data->client);
+
         ret = platform_driver_sysfs_create_files(dev);
         if(ret){
                 pr_info("sysfs_create_group failure.\n");
