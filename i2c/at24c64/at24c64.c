@@ -10,8 +10,10 @@
 #include <linux/module.h>
 #include <linux/sysfs.h>
 
-#define AT24C64_WRITE       0b10100000      /* Write to eeprom */
-#define AT24C64_READ        0b10100001      /* Read from eeprom */
+#define AT24C64_WRITE           0b10100000      /* Write to eeprom */
+#define AT24C64_READ            0b10100001      /* Read from eeprom */
+
+#define ARRAY_ELEMENTS(arr)     (sizeof(arr) / sizeof(arr[0]))
 
 static int at24c64_probe(struct i2c_client *client,
         const struct i2c_device_id *id);
@@ -20,12 +22,12 @@ static ssize_t show_name(struct device *dev,
         struct device_attribute *attr, char *buf);
 static int platform_driver_sysfs_create_files(struct device *dev);
 static void platform_driver_sysfs_remove_files(struct device *dev);
-static int at24c64_write_byte(struct i2c_client *client,
+static void at24c64_write_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
-static int at24c64_read_byte(struct i2c_client *client,
+static void at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
 
-u8 write_byte = 0x22;
+u8 write_byte = 0xB;
 u8 get_byte = 0;
 
 /* Data about at24c64 eeprom */
@@ -113,46 +115,32 @@ static void platform_driver_sysfs_remove_files(struct device *dev)
 /*
  * Functions for talking with eeprom
  */
-static int at24c64_write_byte(struct i2c_client *client,
+static void at24c64_write_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
         int ret = 0;
-        u8 status = 0;
-        const u8 command[] = {addr >> 8, addr, 0x22};
+        const u8 command[] = {addr >> 8, addr, write_byte};
 
-        /* Start byte by address */
-        ret = i2c_master_send(client, command, 3);
-        if(ret != 0) 
-                return ret;
-
-        usleep_range(350000, 350000 + 100000);
-
-        ret = i2c_master_recv(client, &status, 1);
-        if(ret != 1)
-                return -ENODATA;
-
-        return status;
+        ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
+        if(ret != 3) 
+                dev_info(&client->dev, "Write %d byte\n", ret);
 }
 
-static int at24c64_read_byte(struct i2c_client *client,
+static void at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
-        int ret;
+        int ret = 0;
         const u8 command[] = {addr >> 8, addr};
 
-        /* Start byte for reading */
-        ret = i2c_master_send(client, command, 1);
-        if(ret != 0) 
-                return ret;
+        ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
+        if(ret != 2) 
+                dev_info(&client->dev, "Write %d byte\n", ret);
 
         usleep_range(350000, 350000 + 100000);
 
-        /* Read byte from eeprom memory */
-        ret = i2c_master_recv(client, byte, 1);
-        if(ret != 0) 
-                return ret;
-
-        return ret;
+        ret = i2c_master_recv(client, &get_byte, 1);
+        if(ret != 1)
+                dev_info(&client->dev, "Recive %d byte\n", ret);
 }
 
 
@@ -221,10 +209,11 @@ static int at24c64_probe(struct i2c_client *client,
                 pr_info("sysfs_create_group failure.\n");
         }
 
-        ret = at24c64_write_byte(client, 0x00f8, &write_byte);  
-        ret = at24c64_read_byte(client, 0x00f8, &get_byte);
+        at24c64_write_byte(client, 0x00F8, &write_byte);  
+        usleep_range(350000, 350000 + 100000);
+        at24c64_read_byte(client, 0x00F8, &get_byte);
 
-        dev_info(dev, "Read data by 0x00f8 = %x\n", get_byte);
+        dev_info(dev, "Read data by 0x00F8 = %x\n", get_byte);
 
         dev_info(dev, "Probe function was successful\n");
 
