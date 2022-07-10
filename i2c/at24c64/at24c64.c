@@ -26,9 +26,15 @@ static void at24c64_write_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
 static void at24c64_read_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte);
+static void at24c64_write_page(struct i2c_client *client,
+        const u16 addr, u8 * const arr, u8 count);
+static void at24c64_read_page(struct i2c_client *client,
+        const u16 addr, u8 * const arr, u8 count);
 
 u8 write_byte = 0xB;
 u8 get_byte = 0;
+u8 write_page[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+u8 read_page[10];
 
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
@@ -119,10 +125,10 @@ static void at24c64_write_byte(struct i2c_client *client,
         const u16 addr, u8 * const byte)
 {
         int ret = 0;
-        const u8 command[] = {addr >> 8, addr, write_byte};
+        const u8 command[] = {addr >> 8, addr, *byte};
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != 3) 
+        if(ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
 }
 
@@ -133,14 +139,55 @@ static void at24c64_read_byte(struct i2c_client *client,
         const u8 command[] = {addr >> 8, addr};
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != 2) 
+        if(ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
 
         usleep_range(350000, 350000 + 100000);
 
-        ret = i2c_master_recv(client, &get_byte, 1);
+        ret = i2c_master_recv(client, byte, 1);
         if(ret != 1)
                 dev_info(&client->dev, "Recive %d byte\n", ret);
+}
+
+static void at24c64_write_page(struct i2c_client *client,
+        const u16 addr, u8 * const arr, u8 count)
+{
+        int ret = 0;
+        int i = 0;
+        u8 *command;
+
+        command = devm_kzalloc(&client->dev, (count + 2)*sizeof(u8),
+                GFP_KERNEL);
+        if(!command)
+                dev_info(&client->dev, "Cannot allocate memory for page");
+
+        command[0] = addr >> 8;
+        command[1] = addr;
+        for(i = 0; i < count; i++)
+                command[i+2] = arr[i];
+
+        ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
+        if(ret != ARRAY_ELEMENTS(command)) 
+                dev_info(&client->dev, "Write %d byte\n", ret);
+        dev_info(&client->dev, "Write %d byte\n", ret);
+}
+
+static void at24c64_read_page(struct i2c_client *client,
+        const u16 addr, u8 * const arr, u8 count)
+{
+        int ret = 0;
+        const u8 command[] = {addr >> 8, addr};
+
+        ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
+        if(ret != ARRAY_ELEMENTS(command)) 
+                dev_info(&client->dev, "Write %d byte\n", ret);
+
+        usleep_range(350000, 350000 + 100000);
+
+        ret = i2c_master_recv(client, arr, count);
+        if(ret != count)
+                dev_info(&client->dev, "Recive %d byte\n", ret);
+        dev_info(&client->dev, "Recive %d byte\n", ret);
 }
 
 
@@ -209,11 +256,17 @@ static int at24c64_probe(struct i2c_client *client,
                 pr_info("sysfs_create_group failure.\n");
         }
 
+        /*
         at24c64_write_byte(client, 0x00F8, &write_byte);  
         usleep_range(350000, 350000 + 100000);
         at24c64_read_byte(client, 0x00F8, &get_byte);
-
         dev_info(dev, "Read data by 0x00F8 = %x\n", get_byte);
+        */
+
+        at24c64_write_page(client, 0xA, write_page, ARRAY_ELEMENTS(write_page));
+        usleep_range(350000, 350000 + 100000);
+        at24c64_read_page(client, 0xA, read_page, ARRAY_ELEMENTS(read_page));
+
 
         dev_info(dev, "Probe function was successful\n");
 
