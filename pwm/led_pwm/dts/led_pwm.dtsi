@@ -1,0 +1,15 @@
+/ {
+    led_pwm {
+        compatible = "led_pwm";
+        pinctrl-single,names = "default";
+        pinctrl-0 = <&led_pwm_gpios>;
+        status = "okay";
+        led_pwm,name = "Led PWM";
+    };
+};
+
+&am33xx_pinmux {
+    led_pwm_gpios: bone_led_pwm_gpios {
+        pinctrl-single,pins = < 0x48 0x06 >;
+    };
+};
