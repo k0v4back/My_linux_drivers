@@ -41,7 +41,7 @@ static ssize_t direction_show(struct device *dev,
         char *p_direction = NULL;
         int direction = gpiod_get_direction(device_data->desc);
 
-        if(direction < 0)
+        if (direction < 0)
             return direction;
 
         /* if dir = 0 , then show "out". if dir =1 , then show "in" */
@@ -56,7 +56,7 @@ static ssize_t direction_store(struct device *dev,
         int ret;
         struct device_private_data *device_data = dev_get_drvdata(dev);
 
-        if(sysfs_streq(buf, "in"))
+        if (sysfs_streq(buf, "in"))
             ret = gpiod_direction_input(device_data->desc);
         else if (sysfs_streq(buf, "out"))
             ret = gpiod_direction_output(device_data->desc, 0);
@@ -83,7 +83,7 @@ static ssize_t value_store(struct device *dev,
         long value;
 
         ret = kstrtol(buf, 0, &value);
-        if(ret)
+        if (ret)
             return ret;
         gpiod_set_value(device_data->desc, value);
 
@@ -154,7 +154,7 @@ static int gpio_led_control_probe(struct platform_device *pdev)
         struct device_private_data *device_data;
 
         gpio_driver_private_data.count_of_devices = of_get_child_count(parent);
-        if(!gpio_driver_private_data.count_of_devices){
+        if (!gpio_driver_private_data.count_of_devices) {
             dev_err(dev, "No devices found\n");
             return -EINVAL;
         }
@@ -171,17 +171,17 @@ static int gpio_led_control_probe(struct platform_device *pdev)
         {
             /* Allocate memory for device private data */
             device_data = devm_kzalloc(dev, sizeof(*device_data), GFP_KERNEL);
-            if(!device_data){
+            if (!device_data) {
                 dev_err(dev, "Cannot allocate memory\n");
                 return -ENOMEM;
             }
 
             /* Fill with data device private data structer from device tree */
-            if(of_property_read_string(child, "label", &name)){
+            if (of_property_read_string(child, "label", &name)) {
                 dev_warn(dev, "Missing lable information \n");
                 snprintf(device_data->label,
                         sizeof(device_data->label), "%d", i);
-            }else{
+            } else{
                 strcpy(device_data->label, name);
                 dev_info(dev, "GPIO label = %s\n", device_data->label);
             }
@@ -189,16 +189,16 @@ static int gpio_led_control_probe(struct platform_device *pdev)
             /* Get GPIO as a reference to GPIO descriptor */
             device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone",
                     &child->fwnode, GPIOD_ASIS, device_data->label);
-            if(IS_ERR(device_data->desc)){
+            if (IS_ERR(device_data->desc)) {
                 ret = PTR_ERR(device_data->desc); 
-                if(ret == -ENOENT)
+                if (ret == -ENOENT)
                     dev_err(dev, "No GPIO has been assigned to  the requested function and/or index\n");
                 return ret;
             }
 
             /* Set the gpio direction to output */
             ret = gpiod_direction_output(device_data->desc, 0);
-            if(ret){
+            if (ret) {
                 dev_err(dev, "gpio direction set failed \n");
                 return ret;
             }
@@ -207,7 +207,7 @@ static int gpio_led_control_probe(struct platform_device *pdev)
             gpio_driver_private_data.dev[i] = device_create_with_groups(
                     gpio_driver_private_data.class_gpio,
                     dev, 0, device_data, gpio_attr_groups, device_data->label);
-            if(IS_ERR(gpio_driver_private_data.dev[i])){
+            if (IS_ERR(gpio_driver_private_data.dev[i])) {
                 dev_err(dev, "Error in device_create \n");
                 return PTR_ERR(gpio_driver_private_data.dev[i]);
             }
@@ -224,7 +224,7 @@ static int gpio_led_control_remove(struct platform_device *pdev)
 
         dev_info(&pdev->dev, "Remove called\n");
 
-        for(i = 0; i < gpio_driver_private_data.count_of_devices; i++){
+        for(i = 0; i < gpio_driver_private_data.count_of_devices; i++) {
             device_unregister(gpio_driver_private_data.dev[i]);
         }
 
@@ -237,7 +237,7 @@ static int __init gpio_led_control_init(void)
 
         gpio_driver_private_data.class_gpio = class_create(THIS_MODULE,
                 "gpio_led_control");
-        if(IS_ERR(gpio_driver_private_data.class_gpio)){
+        if (IS_ERR(gpio_driver_private_data.class_gpio)) {
             pr_err("Class creation failed\n");
             ret = PTR_ERR(gpio_driver_private_data.class_gpio);
             return ret;

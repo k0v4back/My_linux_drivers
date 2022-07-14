@@ -24,7 +24,7 @@ void reg_timer(void)
 {
     struct itimerval interval_val;
 
-    if(signal(SIGALRM, sig_handler) == SIG_ERR){
+    if (signal(SIGALRM, sig_handler) == SIG_ERR) {
         perror("Unable to catch SIGALRM");
         log_file_write("signal() -> Unable to catch SIGALRM");
         exit(1);
@@ -34,7 +34,7 @@ void reg_timer(void)
     interval_val.it_value.tv_usec = (TIMER_INTERVAL_MS*1000) % 1000000;
     interval_val.it_interval = interval_val.it_value;
 
-    if(setitimer(ITIMER_REAL, &interval_val, NULL) == -1){
+    if (setitimer(ITIMER_REAL, &interval_val, NULL) == -1) {
         perror("Error calling setitimer()");
         log_file_write("setitimer() -> Error calling setitimer()");
         exit(1);
@@ -61,7 +61,7 @@ void button_signal_reg(void)
     fd = open("/dev/gpio_irq_signal", O_RDONLY);
     open_errors_check(fd, __func__);
 
-    if(ioctl(fd, REGISTER_UAPP, NULL)){
+    if (ioctl(fd, REGISTER_UAPP, NULL)) {
         perror("Error registering app");
         close(fd);
     }
@@ -71,8 +71,8 @@ void open_errors_check(int fd, const char *func_err)
 {
     char err_msg[LOG_ERROR_MSG];
 
-    if(fd < 0){
-        if(errno == ENOENT){
+    if (fd < 0) {
+        if (errno == ENOENT) {
             /* Write to log file about problem */
             sprintf(err_msg, "open() -> ENOENT error (Error sourse -> %s)", func_err);
             log_file_write(err_msg);
@@ -88,13 +88,13 @@ void write_errors_check(int write_num, const char *func_err)
 {
     char err_msg[LOG_ERROR_MSG];
 
-    if(write_num < 0){
-        if(errno == EBADF){
+    if (write_num < 0) {
+        if (errno == EBADF) {
             /* Write to log file about problem */
             sprintf(err_msg, "write() -> ENOENT error (Error sourse -> %s)", func_err);
             log_file_write(err_msg);
             exit(EXIT_FAILURE);
-        }else if(errno == EFAULT){
+        } else if (errno == EFAULT) {
             /* Write to log file about problem */
             sprintf(err_msg, "write() -> EFAULT error (Error sourse -> %s)", func_err);
             log_file_write(err_msg);
@@ -110,8 +110,8 @@ void read_errors_check(int read_num, const char *func_err)
 {
     char err_msg[LOG_ERROR_MSG];
 
-    if(read_num < 0){
-        if(errno == EINVAL){
+    if (read_num < 0) {
+        if (errno == EINVAL) {
             /* Write to log file about problem */
             sprintf(err_msg, "read() -> EINVAL error (Error sourse -> %s)", func_err);
             log_file_write(err_msg);

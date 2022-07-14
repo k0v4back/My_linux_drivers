@@ -137,12 +137,12 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
         struct device_node *dev_node = dev->of_node;
         struct platform_device_data *pdata;
 
-        if(!dev_node)
+        if (!dev_node)
                 return NULL;
         
         /* Allocate memory for pdata */
         pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
-        if(!pdata){
+        if (!pdata) {
                 dev_info(dev, "Cannot allocate memory \n");
                 return ERR_PTR(-ENOMEM);
         }
@@ -150,12 +150,12 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
         /* Extract propertes of the device node using dev_node 
          * and put into struct platform_device_data */
 
-        if(of_property_read_string(dev_node, "sysfs,name", &pdata->name)){
+        if (of_property_read_string(dev_node, "sysfs,name", &pdata->name)) {
                 dev_info(dev, "Missing name property \n");
                 return ERR_PTR(-EINVAL);
         }
 
-        if(of_property_read_u32(dev_node, "sysfs,size", &pdata->size)){
+        if (of_property_read_u32(dev_node, "sysfs,size", &pdata->size)) {
                 dev_info(dev, "Missing size property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -174,12 +174,12 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
 
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(client);
-        if(IS_ERR(pdata))
+        if (IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device */
-        dev_data = devm_kzalloc(&client->dev, sizeof(struct device_private_data), GFP_KERNEL);
-        if(dev_data == NULL){
+        dev_data = devm_kzalloc(&client->dev, sizeof(*dev_data), GFP_KERNEL);
+        if (dev_data == NULL) {
                 dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
                 ret = -ENOMEM;
         }
@@ -198,7 +198,7 @@ static int sysfs_i2c_probe(struct i2c_client *client, const struct i2c_device_id
 
         dev = root_device_register("my_sensor");
         ret = platform_driver_sysfs_create_files(dev);
-        if(ret){
+        if (ret) {
                 pr_info("sysfs_create_group failure.\n");
         }
 
@@ -239,7 +239,7 @@ static int __init sysfs_i2c_init(void)
         int ret;
 
         ret = i2c_add_driver(&sysfs_i2c_driver);
-        if(ret != 0){
+        if (ret != 0) {
                 pr_err("%s:driver registration failed i2c-slave, error=%d\n", __func__, ret);
                 i2c_del_driver(&sysfs_i2c_driver);
                 return ret;

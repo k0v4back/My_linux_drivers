@@ -70,12 +70,12 @@ struct platform_device_data * get_platform_data_dt(struct spi_device *device)
         struct device_node *dev_node = dev->of_node;
         struct platform_device_data *pdata;
 
-        if(!dev_node)
+        if (!dev_node)
                 return NULL;
         
         /* Allocate memory for pdata */
         pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
-        if(!pdata){
+        if (!pdata) {
                 dev_info(dev, "Cannot allocate memory \n");
                 return ERR_PTR(-ENOMEM);
         }
@@ -83,12 +83,12 @@ struct platform_device_data * get_platform_data_dt(struct spi_device *device)
         /* Extract propertes of the device node using dev_node 
          * and put into struct platform_device_data */
 
-        if(of_property_read_string(dev_node, "test,name", &pdata->name)){
+        if (of_property_read_string(dev_node, "test,name", &pdata->name)) {
                 dev_info(dev, "Missing serial number property \n");
                 return ERR_PTR(-EINVAL);
         }
 
-        if(of_property_read_u32(dev_node, "test,size", &pdata->size)){
+        if (of_property_read_u32(dev_node, "test,size", &pdata->size)) {
                 dev_info(dev, "Missing size property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -107,7 +107,7 @@ static int test_spi_probe(struct spi_device *device)
         device->mode = SPI_MODE_0;
         device->max_speed_hz = 500000;
         err = spi_setup(device);
-        if(err < 0){
+        if (err < 0) {
                 dev_info(dev, "Failed to set SPI specifications");
                 return err;
         }
@@ -116,12 +116,12 @@ static int test_spi_probe(struct spi_device *device)
 
         /* Check device tree and get data*/
         pdata = get_platform_data_dt(device);
-        if(IS_ERR(pdata))
+        if (IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
         /* Allocate memory for device private data */
         dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
-        if(!dev_data){
+        if (!dev_data) {
                 dev_info(dev, "Cannot allocate memory for device private data\n");
                 err = -ENOMEM;
         }
@@ -185,7 +185,7 @@ static int __init test_spi_init(void)
         int ret;
         
         ret = spi_register_driver(&test_spi_driver);
-        if(ret != 0){
+        if (ret != 0) {
                 pr_err("%s:driver registration failed spi-slave, error=%d\n", __func__, ret);
                 spi_unregister_driver(&test_spi_driver);
                 return ret;

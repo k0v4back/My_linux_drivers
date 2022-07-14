@@ -185,7 +185,7 @@ static ssize_t command_store(struct device *dev,
         long value;
 
         ret = kstrtol(buf, 0, &value);
-        if(ret)
+        if (ret)
                 return ret; 
 
         ssd1306_fill(value);
@@ -210,7 +210,7 @@ static ssize_t cursor_pos_store(struct device *dev,
         long value;
 
         ret = kstrtol(buf, 0, &value);
-        if(ret)
+        if (ret)
                 return ret; 
 
         device_data.cursor_pos = value;
@@ -235,7 +235,7 @@ static ssize_t line_num_store(struct device *dev,
         long value;
 
         ret = kstrtol(buf, 0, &value);
-        if(ret)
+        if (ret)
                 return ret; 
 
         device_data.line_num = value;
@@ -355,9 +355,9 @@ static void ssd1306_write(bool is_cmd, unsigned char data)
         unsigned char buf[2] = {0};
         int ret;
 
-        if(is_cmd == true){
+        if (is_cmd == true) {
                 buf[0] = 0x00;
-        }else{
+        } else {
                 buf[0] = 0x40;
         }
 
@@ -369,7 +369,7 @@ static void ssd1306_write(bool is_cmd, unsigned char data)
 static void ssd1306_set_cursor(uint8_t line_num, uint8_t cursor_pos)
 {
         /* Move the Cursor to specified position only if it is in range */
-        if((line_num <= SSD1306_MAX_LINE) && (cursor_pos < SSD1306_MAX_SEG)){
+        if ((line_num <= SSD1306_MAX_LINE) && (cursor_pos < SSD1306_MAX_SEG)) {
                 device_data.line_num   = line_num;              /* Save the specified line number */
                 device_data.cursor_pos = cursor_pos;            /* Save the specified cursor position */
 
@@ -385,7 +385,7 @@ static void ssd1306_set_cursor(uint8_t line_num, uint8_t cursor_pos)
 
 static void ssd1306_string(unsigned char *str)
 {
-        while(*str){
+        while(*str) {
                 ssd1306_print_char(*str++);
         }
 }
@@ -399,12 +399,12 @@ static void ssd1306_print_char(unsigned char c)
          * If we character is greater than segment len or we got new line charcter
          * then move the cursor to the new line
          */ 
-        if(((device_data.cursor_pos + device_data.font_size) >= SSD1306_MAX_SEG) || (c == '\n')){
+        if (((device_data.cursor_pos + device_data.font_size) >= SSD1306_MAX_SEG) || (c == '\n')) {
                 ssd1306_go_to_next_line();
         }
         
         /* print charcters other than new line */
-        if( c != '\n' ){
+        if ( c != '\n' ) {
                 c -= 0x20;  /* or c -= ' '; */
                 do{
                         data_byte= ssd1306_font[c][temp]; /* Get the data to be displayed from LookUptable */
@@ -427,7 +427,7 @@ static void ssd1306_fill(unsigned char data)
         unsigned int i      = 0;
 
         /* Fill the Display */
-        for(i = 0; i < total; i++){
+        for(i = 0; i < total; i++) {
                 ssd1306_write(false, data);
         }
 }
@@ -452,12 +452,12 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
         struct device_node *dev_node = dev->of_node;
         struct platform_device_data *pdata;
 
-        if(!dev_node)
+        if (!dev_node)
                 return NULL;
         
         /* Allocate memory for pdata */
         pdata = devm_kzalloc(dev, sizeof(struct platform_device_data), GFP_KERNEL);
-        if(!pdata){
+        if (!pdata) {
                 dev_info(dev, "Cannot allocate memory for platform_device_data\n");
                 return ERR_PTR(-ENOMEM);
         }
@@ -466,7 +466,7 @@ struct platform_device_data * get_platform_data_dt(struct i2c_client *client)
          * Extract propertes of the device node using dev_node 
          * and put into struct platform_device_data 
          */
-        if(of_property_read_string(dev_node, "ssd1306,name", &pdata->name)){
+        if (of_property_read_string(dev_node, "ssd1306,name", &pdata->name)) {
                 dev_info(dev, "Missing name property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -482,7 +482,7 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         
         /* Check device tree and get data */
         pdata = get_platform_data_dt(client);
-        if(IS_ERR(pdata))
+        if (IS_ERR(pdata))
                 return PTR_ERR(pdata);
 
         /* Save i2c client */
@@ -498,7 +498,7 @@ static int ssd1306_probe(struct i2c_client *client, const struct i2c_device_id *
         dev = root_device_register("ssd1306");
         dev_set_drvdata(dev, i2c_client_global);
         ret = platform_driver_sysfs_create_files(dev);
-        if(ret){
+        if (ret) {
                 pr_info("sysfs_create_group failure.\n");
         }
 
@@ -542,7 +542,7 @@ static int __init ssd1306_init(void)
         int ret;
         
         ret = i2c_add_driver(&ssd1306);
-        if(ret != 0){
+        if (ret != 0) {
                 pr_err("%s:driver registration failed i2c-slave, error=%d\n", __func__, ret);
                 i2c_del_driver(&ssd1306);
                 return ret;

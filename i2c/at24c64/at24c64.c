@@ -59,7 +59,10 @@ static struct of_device_id at24c64_of_match[] = {
 };
 
 static const struct i2c_device_id at24c64_id[] = {
-        { "at24c64", 0 },
+        { 
+                .name = "at24c64",
+                .driver_data = 0
+        },
         { }
 };
 MODULE_DEVICE_TABLE(i2c, at24c64_id);
@@ -128,7 +131,7 @@ static void at24c64_write_byte(struct i2c_client *client,
         const u8 command[] = {addr >> 8, addr, *byte};
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != ARRAY_ELEMENTS(command)) 
+        if (ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
 }
 
@@ -139,13 +142,13 @@ static void at24c64_read_byte(struct i2c_client *client,
         const u8 command[] = {addr >> 8, addr};
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != ARRAY_ELEMENTS(command)) 
+        if (ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
 
         usleep_range(350000, 350000 + 100000);
 
         ret = i2c_master_recv(client, byte, 1);
-        if(ret != 1)
+        if (ret != 1)
                 dev_info(&client->dev, "Recive %d byte\n", ret);
 }
 
@@ -158,7 +161,7 @@ static void at24c64_write_page(struct i2c_client *client,
 
         command = devm_kzalloc(&client->dev, (count + 2)*sizeof(u8),
                 GFP_KERNEL);
-        if(!command)
+        if (!command)
                 dev_info(&client->dev, "Cannot allocate memory for page");
 
         command[0] = addr >> 8;
@@ -167,7 +170,7 @@ static void at24c64_write_page(struct i2c_client *client,
                 command[i+2] = arr[i];
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != ARRAY_ELEMENTS(command)) 
+        if (ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
         dev_info(&client->dev, "Write %d byte\n", ret);
 }
@@ -179,13 +182,13 @@ static void at24c64_read_page(struct i2c_client *client,
         const u8 command[] = {addr >> 8, addr};
 
         ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if(ret != ARRAY_ELEMENTS(command)) 
+        if (ret != ARRAY_ELEMENTS(command)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
 
         usleep_range(350000, 350000 + 100000);
 
         ret = i2c_master_recv(client, arr, count);
-        if(ret != count)
+        if (ret != count)
                 dev_info(&client->dev, "Recive %d byte\n", ret);
         dev_info(&client->dev, "Recive %d byte\n", ret);
 }
@@ -200,13 +203,12 @@ static struct at24c64_chip_data * get_platform_data_dt(struct i2c_client *client
         struct device_node *dev_node = dev->of_node;
         struct at24c64_chip_data *pdata;
 
-        if(!dev_node)
+        if (!dev_node)
                 return NULL;
 
         /* Allocate memory for pdata */
-        pdata = devm_kzalloc(dev, sizeof(struct at24c64_chip_data),
-                GFP_KERNEL);
-        if(!pdata){
+        pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+        if (!pdata) {
                 dev_info(dev, "Cannot allocate memory for at24c64_chip_data");
                 return ERR_PTR(-ENOMEM);
         }
@@ -215,7 +217,7 @@ static struct at24c64_chip_data * get_platform_data_dt(struct i2c_client *client
          * Extract propertes of the device node using dev_node
          * and put into struct platform_device_data 
          */
-        if(of_property_read_string(dev_node, "at24c64,name", &pdata->name)){
+        if (of_property_read_string(dev_node, "at24c64,name", &pdata->name)) {
                 dev_info(dev, "Missing name property \n");
                 return ERR_PTR(-EINVAL);
         }
@@ -233,7 +235,7 @@ static int at24c64_probe(struct i2c_client *client,
         /* Allocate memory for device */
         dev_data = devm_kzalloc(&client->dev,
                 sizeof(struct device_private_data), GFP_KERNEL);
-        if(dev_data == NULL){
+        if (dev_data == NULL) {
                 dev_info(dev, "Cannot allocate memory for device_private_data struct\n");
                 ret = -ENOMEM;
         }
@@ -252,7 +254,7 @@ static int at24c64_probe(struct i2c_client *client,
         dev = root_device_register("at24c64");
 
         ret = platform_driver_sysfs_create_files(dev);
-        if(ret){
+        if (ret) {
                 pr_info("sysfs_create_group failure.\n");
         }
 
@@ -292,7 +294,7 @@ static int __init at24c64_driver_init(void)
         int ret;
 
         ret = i2c_add_driver(&at24c64);
-        if(ret != 0){
+        if (ret != 0) {
                 pr_err("%s:driver registration failed \
                         i2c-slave, error=%d\n", __func__, ret);
                 i2c_del_driver(&at24c64);
