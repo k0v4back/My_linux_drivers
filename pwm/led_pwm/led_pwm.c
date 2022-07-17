@@ -7,15 +7,12 @@
 
 static int led_pwm_probe(struct platform_device *pdev);
 static int led_pwm_remove(struct platform_device *pdev);
-struct platform_device_data * get_platform_data_dt(
-        struct device *dev);
+
+struct pwm_device *pwm0 = NULL;
+u32 pwm_on_time = 500000000;
 
 struct led_pwm_device {
         struct pwm_chip chip;
-};
-
-struct led_pwm {
-       const char *name; 
 };
 
 static struct of_device_id led_pwm_dt_ids[] = {
@@ -31,47 +28,54 @@ static struct platform_driver led_pwm_driver = {
         .driver = {
                 .name               = "led_pwm",
                 .owner              = THIS_MODULE,
-                .of_match_table     = of_match_ptr(led_pwm_dt_ids),
         },
         .probe  = led_pwm_probe,
         .remove = led_pwm_remove,
 };
 
-struct platform_device_data * get_platform_data_dt(
-        struct device *dev)
+static int led_pwm_config(struct pwm_chip *chip,
+            struct pwm_device *pwm_dev,
+            int duty_ns, int period_ns)
 {
-        struct device_node *dev_node = dev->of_node;
-        struct led_pwm *data_led_pwm;
+        int ret = 0;
+        struct device *dev = chip->dev; 
 
-        if(!dev_node)
-                return NULL;
+        duty_ns = 1000000000;
+        period_ns = 500000000;
 
-        data_led_pwm = devm_kzalloc(dev, sizeof(*data_led_pwm),
-                GFP_KERNEL);
-        if (!data_led_pwm) {
-                dev_info(dev, "Cannot allocate memory for led_pwm\n");
-                return ERR_PTR(-ENOMEM);
-        }
+        ret = pwm_config(pwm_dev, duty_ns, period_ns);
+        if (ret != 0)
+                dev_info(dev, "Cannot config PWM chip\n");
 
-        if (of_property_read_string(dev_node,
-                    "led_pwm,name", &data_led_pwm->name)) {
-                dev_info(dev, "Missing name property \n");
-                return ERR_PTR(-EINVAL);
-        }
-
-        return data_led_pwm;
+        return ret;
 }
+
+static int led_pwm_enable(struct pwm_chip *chip,
+             struct pwm_device *pwm_dev)
+{
+        pr_info("Enable PWM device number %d", pwm_dev->hwpwm);
+
+        return 0;
+}
+
+static void led_pwm_disable(struct pwm_chip *chip,
+            struct pwm_device *pwm_dev)
+{
+        pr_info("Disabled PWM device number %d", pwm_dev->hwpwm);
+}
+
+static const struct pwm_ops led_pwm_ops = {
+        .config     = led_pwm_config,
+        .enable     = led_pwm_enable,
+        .disable    = led_pwm_disable,
+        .owner      = THIS_MODULE,
+};
 
 static int led_pwm_probe(struct platform_device *pdev)
 {
         struct led_pwm_device *led_pwm_priv;
-        struct led_pwm *data_led_pwm;
         struct device *dev = &pdev->dev;
         int ret = 0;
-
-        data_led_pwm = get_platform_data_dt(&dev);
-        if (IS_ERR(data_led_pwm))
-                return PTR_ERR(data_led_pwm);
 
         led_pwm_priv = devm_kzalloc(dev, sizeof(*led_pwm_priv),
                                 GFP_KERNEL);
