@@ -169,10 +169,9 @@ static void at24c64_write_page(struct i2c_client *client,
         for(i = 0; i < count; i++)
                 command[i+2] = arr[i];
 
-        ret = i2c_master_send(client, command, ARRAY_ELEMENTS(command));
-        if (ret != ARRAY_ELEMENTS(command)) 
+        ret = i2c_master_send(client, command, (count + 2));
+        if (ret != (count + 2)) 
                 dev_info(&client->dev, "Write %d byte\n", ret);
-        dev_info(&client->dev, "Write %d byte\n", ret);
 }
 
 static void at24c64_read_page(struct i2c_client *client,
