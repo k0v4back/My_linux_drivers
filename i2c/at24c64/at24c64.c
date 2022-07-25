@@ -11,10 +11,14 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <linux/uaccess.h>
 
 
 #define AT24C64_WRITE           0b10100000      /* Write to eeprom */
 #define AT24C64_READ            0b10100001      /* Read from eeprom */
+
+#define LAST_BYTE               (8000 - 1)      /* 64Kb = 64*10^3 bits */
+#define FIRST_BYTE              0
 
 #define ARRAY_ELEMENTS(arr)     (sizeof(arr) / sizeof(arr[0]))
 
@@ -44,6 +48,7 @@ u8 read_page[10];
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
         const char *name;
+        int current_fpos;
 };
 
 /* Device private data structure */
@@ -201,6 +206,8 @@ static struct at24c64_chip_data * get_platform_data_dt(struct i2c_client *client
                 return ERR_PTR(-EINVAL);
         }
 
+        pdata->current_fpos = FIRST_BYTE;
+
         return pdata;
 }
 
@@ -265,7 +272,33 @@ static ssize_t at24c64_write(struct file *pfile, const char __user *ubuff,
 static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count,
         loff_t *fpos) 
 {
-        return 0;
+        int ret = 0;
+        char *buff = 0;
+
+        pr_info("Requested read %zu bytes\n", count);
+
+        /* Check boundaries of memory */
+        if ((count + *fpos) > LAST_BYTE)
+                count = LAST_BYTE - *fpos;
+
+        /* Read data from memory and copy data to buffer */
+        buff = kzalloc(count, GFP_KERNEL); 
+        if (count == 1)
+                at24c64_read_byte(driver_data.client, *fpos, buff);
+        else if (count > 1)
+                at24c64_read_page(driver_data.client, *fpos, buff, count); 
+
+        /* Write data to user buff */
+        ret = copy_to_user(ubuff, buff, count);        
+        if (ret != 0) {
+                pr_info("Could not copy %zu bytes\n", ret);
+                return -EFAULT;
+        }
+
+        /* Update file position */
+        *fpos += count;
+
+        return count;
 }
 
 static int at24c64_release(struct inode *pinode, struct file *pfile)
