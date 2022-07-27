@@ -38,6 +38,7 @@ static ssize_t at24c64_write(struct file *pfile, const char __user *ubuff,
         size_t count, loff_t *fpos);
 static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count,
         loff_t *fpos); 
+static loff_t at24c64_llseek(struct file *filp, loff_t offset, int whence);
 static int at24c64_release(struct inode *pinode, struct file *pfile);
 
 u8 write_byte = 0xB;
@@ -48,7 +49,6 @@ u8 read_page[10];
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
         const char *name;
-        int current_fpos;
 };
 
 /* Device private data structure */
@@ -59,7 +59,7 @@ static struct device_private_data {
 /* Driver information */
 static struct driver_private_data {
         dev_t base_dev_num;
-        struct cdev *cdev;
+        struct cdev cdev;
         struct device *device;
         struct class *class;
         struct i2c_client *client;
@@ -71,6 +71,7 @@ static struct file_operations at24c64_fops = {
         .open = at24c64_open,
         .write = at24c64_write,
         .read = at24c64_read,
+        .llseek = at24c64_llseek,
         .release = at24c64_release,
         .owner = THIS_MODULE
 };
@@ -206,8 +207,6 @@ static struct at24c64_chip_data * get_platform_data_dt(struct i2c_client *client
                 return ERR_PTR(-EINVAL);
         }
 
-        pdata->current_fpos = FIRST_BYTE;
-
         return pdata;
 }
 
@@ -260,38 +259,84 @@ static int at24c64_probe(struct i2c_client *client,
 /* File operation methods */
 static int at24c64_open(struct inode *pinode, struct file *pfile) 
 {
+        struct driver_private_data *private_data;
+        
+        /* Get driver data and save */
+        private_data = container_of(pinode->i_cdev, struct driver_private_data, cdev);
+        pfile->private_data = private_data;
+
         return 0;
 }
 
 static ssize_t at24c64_write(struct file *pfile, const char __user *ubuff,
         size_t count, loff_t *fpos)
 {
-        return -ENOMEM;
+        int ret;
+        char *buff = 0;
+
+        pr_info("Requested write %zu bytes\n", count);
+
+        /* Check EOF */
+        if (*fpos >= LAST_BYTE)
+                return -EINVAL;
+        
+        /* Check boundaries of memory */
+        if ((count + *fpos) > LAST_BYTE)
+                count = LAST_BYTE - *fpos;
+
+        /* Read data from user buffer */
+        buff = kzalloc(count, GFP_KERNEL); 
+        if (buff == NULL) {
+                pr_alert("kzalloc() failed\n");
+                return -EINVAL;
+        }
+        if ((ret = copy_from_user(buff, ubuff, count)) != 0) {
+                pr_info("Could not copy from user %zu bytes\n", ret);
+                return -EFAULT;
+        }
+
+        /* Write data to eeprom memory */
+        if (count == 1)
+                at24c64_write_byte(driver_data.client, *fpos, buff);
+        else if (count > 1)
+                at24c64_write_page(driver_data.client, *fpos, buff, count);
+
+        /* Update file position */
+        *fpos += count;
+
+        return count;
 }
 
 static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count,
         loff_t *fpos) 
 {
-        int ret = 0;
+        int ret;
         char *buff = 0;
 
-        pr_info("Requested read %zu bytes\n", count);
+        pr_info("Requestedo read %zu bytes\n", count);
+
+        /* Check EOF */
+        if (*fpos >= LAST_BYTE)
+                return -EINVAL;
 
         /* Check boundaries of memory */
         if ((count + *fpos) > LAST_BYTE)
                 count = LAST_BYTE - *fpos;
 
-        /* Read data from memory and copy data to buffer */
+        /* Read data from eeprom memory and copy data to buffer */
         buff = kzalloc(count, GFP_KERNEL); 
+        if (buff == NULL) {
+                pr_alert("kzalloc() failed\n");
+                return -EINVAL;
+        }
         if (count == 1)
                 at24c64_read_byte(driver_data.client, *fpos, buff);
         else if (count > 1)
                 at24c64_read_page(driver_data.client, *fpos, buff, count); 
 
         /* Write data to user buff */
-        ret = copy_to_user(ubuff, buff, count);        
-        if (ret != 0) {
-                pr_info("Could not copy %zu bytes\n", ret);
+        if ((ret = copy_to_user(ubuff, buff, count)) != 0) {        
+                pr_info("Could not copy to user %zu bytes\n", ret);
                 return -EFAULT;
         }
 
@@ -299,6 +344,31 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
         *fpos += count;
 
         return count;
+}
+
+static loff_t at24c64_llseek(struct file *filp, loff_t offset, int whence)
+{
+        loff_t new_fpos = filp->f_pos;
+        
+        switch (whence) {
+                case SEEK_SET:
+                        if ((offset > LAST_BYTE) || (offset < 0))
+                                return -EINVAL;
+                        new_fpos = offset;
+                        break;
+                case SEEK_CUR:
+                        if (((offset + new_fpos) > LAST_BYTE) || (offset + new_fpos) < 0)
+                                return -EINVAL;
+                        new_fpos += offset; 
+                        break;
+                case SEEK_END:
+                        new_fpos = LAST_BYTE + offset;
+                        break;
+                default:
+                        return -EINVAL;
+        }
+
+        return new_fpos;
 }
 
 static int at24c64_release(struct inode *pinode, struct file *pfile)
@@ -339,10 +409,10 @@ static int __init at24c64_driver_init(void)
         }
 
         /* Init cdev */
-        cdev_init(driver_data.cdev, &at24c64_fops);
+        cdev_init(&driver_data.cdev, &at24c64_fops);
 
         /* Add cdev, cdev structure register with VFS */
-        ret = cdev_add(driver_data.cdev, driver_data.base_dev_num, 1);
+        ret = cdev_add(&driver_data.cdev, driver_data.base_dev_num, 1);
         if (ret < 0) 
                 pr_err("Cdev add was fail\n");
 
