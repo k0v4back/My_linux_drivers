@@ -13,6 +13,7 @@
 - [dht11](../../tree/main/gpio/dht11): get temperature and humidity from the DHT11 sensor.
 - [ssd1306](../../tree/main/i2c/ssd1306): printing text to the SSD1306 display.
 - [led_control](../../tree/main/gpio/led_control): control of two LEDs.
+- [at24c64_eeprom](../../tree/main/i2c/at24c64): read and write to eeprom AT24C64.
   
   <br>
   

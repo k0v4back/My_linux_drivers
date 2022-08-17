@@ -41,11 +41,6 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
 static loff_t at24c64_llseek(struct file *filp, loff_t offset, int whence);
 static int at24c64_release(struct inode *pinode, struct file *pfile);
 
-u8 write_byte = 0xB;
-u8 get_byte = 0;
-u8 write_page[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-u8 read_page[10];
-
 /* Data about at24c64 eeprom */
 static struct at24c64_chip_data {
         const char *name;
@@ -217,7 +212,6 @@ static int at24c64_probe(struct i2c_client *client,
         struct device *dev = &client->dev;
         int ret;
 
-
         /* Allocate memory for device */
         dev_data = devm_kzalloc(&client->dev, sizeof(*dev_data), GFP_KERNEL);
         if (dev_data == NULL) {
@@ -237,18 +231,6 @@ static int at24c64_probe(struct i2c_client *client,
         dev_info(dev, "Device name = %s\n", dev_data->pdata->name);
 
         dev = root_device_register("at24c64");
-
-        /*
-        at24c64_write_byte(client, 0x00F8, &write_byte);  
-        usleep_range(350000, 350000 + 100000);
-        at24c64_read_byte(client, 0x00F8, &get_byte);
-        dev_info(dev, "Read data by 0x00F8 = %x\n", get_byte);
-        */
-
-        at24c64_write_page(client, 0xA, write_page, ARRAY_ELEMENTS(write_page));
-        usleep_range(350000, 350000 + 100000);
-        at24c64_read_page(client, 0xA, read_page, ARRAY_ELEMENTS(read_page));
-
 
         dev_info(dev, "Probe function was successful\n");
 
@@ -313,7 +295,8 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
         int ret;
         char *buff = 0;
 
-        pr_info("Requestedo read %zu bytes\n", count);
+        pr_info("Read requested for %zu bytes \n",count);
+        pr_info("Current file position = %lld\n",*fpos);
 
         /* Check EOF */
         if (*fpos >= LAST_BYTE)
@@ -329,6 +312,8 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
                 pr_alert("kzalloc() failed\n");
                 return -EINVAL;
         }
+
+        /* NEED TO LOCK */
         if (count == 1)
                 at24c64_read_byte(driver_data.client, *fpos, buff);
         else if (count > 1)
@@ -342,6 +327,9 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
 
         /* Update file position */
         *fpos += count;
+
+        pr_info("Number of bytes successfully read = %zu\n",count);
+        pr_info("Updated file position = %lld\n",*fpos);
 
         return count;
 }
@@ -425,7 +413,7 @@ static int __init at24c64_driver_init(void)
 
         /* Create device file for at24c64 eeprom */
         driver_data.device = device_create(driver_data.class, NULL, driver_data.base_dev_num,
-                NULL, "at24c64_eeprom-%d", 1);
+                NULL, "at24c64_eeprom");
         if (IS_ERR(driver_data.device)) {
                 pr_info("Device creation was fail\n");
                 return 0;
