@@ -5,9 +5,16 @@
 #include "dht11.h"
 #include "led.h"
 #include "aht10.h"
+#include "at24c64.h"
 
 extern volatile _Bool flag;
 extern volatile unsigned int button_push;
+
+static struct at24c64 eeprom_data_at24c64 = {
+    .fpos = 100
+};
+
+static struct at24c64 *ptr_eeprom_data_at24c64 = &eeprom_data_at24c64;
 
 int main(int argc, char **argv)
 {
@@ -24,8 +31,8 @@ int main(int argc, char **argv)
 
     button_signal_reg();
 
-    while(1){
-        if(flag == 1){
+    while (1) {
+        if (flag == 1) {
             sprintf(str_dht11_temperature, "%dC", dht11_data.temperature);
             sprintf(str_dht11_humidity, "%d%%", dht11_data.humidity);
             sprintf(str_aht10_temperature, "%dC", aht10_data.temperature);
@@ -68,6 +75,28 @@ int main(int argc, char **argv)
 //          send_led_value(LED_2, LED_ENABLED);
             led_toggle(LED_1);
             led_toggle(LED_2);
+
+            /* Save temperature and humidity to eeprom */
+            if (write_at24c64(str_dht11_temperature, 10, 
+                        (ptr_eeprom_data_at24c64->fpos + 0)) == WRITE_FAIL) { 
+                log_file_write("Failed dht11 temperature write to eeprom\n");
+            }
+
+            if (write_at24c64(str_dht11_humidity, 10, 
+                        (ptr_eeprom_data_at24c64->fpos + 10)) == WRITE_FAIL) { 
+                log_file_write("Failed dht11 humidity write to eeprom\n");
+            }
+
+            if (write_at24c64(str_dht11_temperature, 10, 
+                        (ptr_eeprom_data_at24c64->fpos + 20)) == WRITE_FAIL) { 
+                log_file_write("Failed aht10 temperature write to eeprom\n");
+            }
+
+            if (write_at24c64(str_dht11_humidity, 10, 
+                        (ptr_eeprom_data_at24c64->fpos + 30)) == WRITE_FAIL) { 
+                log_file_write("Failed aht10 humidity write to eeprom\n");
+            }
+            
 
             flag = 0;
         }

@@ -257,6 +257,7 @@ static ssize_t at24c64_write(struct file *pfile, const char __user *ubuff,
         char *buff = 0;
 
         pr_info("Requested write %zu bytes\n", count);
+        pr_info("Current file position = %lld\n", *fpos);
 
         /* Check EOF */
         if (*fpos >= LAST_BYTE)
@@ -286,6 +287,9 @@ static ssize_t at24c64_write(struct file *pfile, const char __user *ubuff,
         /* Update file position */
         *fpos += count;
 
+        pr_info("Number of bytes successfully write = %zu\n", count);
+        pr_info("Updated file position = %lld\n", *fpos);
+
         return count;
 }
 
@@ -295,8 +299,8 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
         int ret;
         char *buff = 0;
 
-        pr_info("Read requested for %zu bytes \n",count);
-        pr_info("Current file position = %lld\n",*fpos);
+        pr_info("Read requested for %zu bytes \n", count);
+        pr_info("Current file position = %lld\n", *fpos);
 
         /* Check EOF */
         if (*fpos >= LAST_BYTE)
@@ -328,8 +332,8 @@ static ssize_t at24c64_read(struct file *pfile, char __user *ubuff, size_t count
         /* Update file position */
         *fpos += count;
 
-        pr_info("Number of bytes successfully read = %zu\n",count);
-        pr_info("Updated file position = %lld\n",*fpos);
+        pr_info("Number of bytes successfully read = %zu\n", count);
+        pr_info("Updated file position = %lld\n", *fpos);
 
         return count;
 }

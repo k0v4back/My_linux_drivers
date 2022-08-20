@@ -23,10 +23,9 @@ enum at24c64_lseek {
 };
 
 enum at24c64_write write_at24c64(char *data, 
-        int size, struct at24c64 * at24c64_dev_data);
+        int size, int fpos);
 enum at24c64_read read_at24c64(char *data,
-        int size, struct at24c64 * at24c64_dev_data);
-enum at24c64_lseek lseek_at24c64(int fd, 
-        struct at24c64 * at24c64_dev_data);
+        int size, int fpos);
+enum at24c64_lseek lseek_at24c64(int fd, int fpos);
 
 #endif // _AT24C64_H
