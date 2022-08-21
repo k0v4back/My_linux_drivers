@@ -2,6 +2,7 @@
 #define _AT24C64_H
 
 #define AT24C64_PATH        "/dev/at24c64_eeprom"
+#define AT24C64_DIR         "/dev"
 
 struct at24c64 {
     int fpos;

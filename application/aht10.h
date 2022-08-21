@@ -3,6 +3,7 @@
 
 #define AHT10_TEMPERATURE       "/sys/devices/aht10/temp"
 #define AHT10_HUMIDITY          "/sys/devices/aht10/humid"
+#define AHT10_DIR               "/sys/devices/aht10"
 
 #define SIZE_READ_BUFFER        10 
 

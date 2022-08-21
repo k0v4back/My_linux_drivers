@@ -4,6 +4,7 @@
 #define DHT11_TEMPERATURE       "/sys/class/dht11/DHT11/temperature"
 #define DHT11_HUMIDITY          "/sys/class/dht11/DHT11/humidity"
 #define DHT11_UPDATE            "/sys/class/dht11/DHT11/update"
+#define DHT11_DIR               "/sys/class/dht11/DHT11"
 
 #define SIZE_READ_BUFFER        10 
 

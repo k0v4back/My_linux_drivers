@@ -5,6 +5,7 @@
 #define LED2_VALUE      "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN27_gpio3.19/value" 
 #define LED1_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN25_gpio3.21/direction" 
 #define LED2_DIRECTION  "/sys/devices/platform/led_control_devs/gpio_led_control/P9_PIN27_gpio3.19/direction" 
+#define LED_DIR         "/sys/devices/platform/led_control_devs/gpio_led_control" 
 
 #define SIZE_READ_BUFFER        10 
 

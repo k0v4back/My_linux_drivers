@@ -8,6 +8,7 @@
 #define SSD1306_LINE_NUM            "/sys/devices/ssd1306/line_num"
 #define SSD1306_MESSAGE             "/sys/devices/ssd1306/message"
 #define SSD1306_NAME                "/sys/devices/ssd1306/name"
+#define SSD1306_DIR                 "/sys/devices/ssd1306"
 
 #define CHAR_BUF_SIZE 5
 
